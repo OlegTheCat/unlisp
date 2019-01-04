@@ -1,0 +1,7 @@
+[package]
+name = "unlisp"
+version = "0.1.0"
+authors = ["oleh.palianytsia <oleh.palianytsia@protonmail.com>"]
+
+[dependencies]
+im = "12.2.0"
