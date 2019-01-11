@@ -1,19 +1,11 @@
 use std::io;
 use std::io::Read;
+use object::LispObject;
+use object::Symbol;
 
 use super::lexer::Token;
 use super::lexer::Lexer;
 use im::Vector;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum LispObject {
-    Nil,
-    T,
-    Symbol(String),
-    IntegerLiteral(i64),
-    StringLiteral(String),
-    List(Vector<LispObject>)
-}
 
 pub struct Reader<'a, T: Read + 'a> {
     lexer: Lexer<'a, T>
@@ -45,9 +37,9 @@ impl <'a, T: Read + 'a> Reader<'a, T> {
         match tok {
             Token::Symbol(s) if s == "nil" => Some(LispObject::Nil),
             Token::Symbol(s) if s == "t" => Some(LispObject::T),
-            Token::Symbol(s) => Some(LispObject::Symbol(s.to_string())),
-            Token::IntegerLiteral(i) => Some(LispObject::IntegerLiteral(*i)),
-            Token::StringLiteral(s) => Some(LispObject::StringLiteral(s.to_string())),
+            Token::Symbol(s) => Some(LispObject::Symbol(Symbol(s.to_string()))),
+            Token::IntegerLiteral(i) => Some(LispObject::Integer(*i)),
+            Token::StringLiteral(s) => Some(LispObject::String(s.to_string())),
             _ => None
         }
     }
@@ -75,7 +67,7 @@ impl <'a, T: Read + 'a> Reader<'a, T> {
             tok = self.read_tok_or_eof()?;
         }
 
-        Ok(LispObject::List(vec))
+        Ok(LispObject::Vector(vec))
     }
 
     pub fn read_form(&mut self) -> io::Result<LispObject> {

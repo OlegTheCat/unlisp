@@ -1,4 +1,5 @@
-use reader::LispObject;
+use object::LispObject;
+use object::Symbol;
 use im::Vector;
 
 fn prn_list(vec: &Vector<LispObject>) {
@@ -20,9 +21,10 @@ pub fn prn(form: &LispObject) {
     match form {
         LispObject::Nil => print!("NIL"),
         LispObject::T => print!("T"),
-        LispObject::Symbol(s) => print!("{}", s),
-        LispObject::IntegerLiteral(i) => print!("{}", i),
-        LispObject::StringLiteral(s) => print!("\"{}\"", s),
-        LispObject::List(vec) => prn_list(vec)
+        LispObject::Symbol(Symbol(s)) => print!("{}", s),
+        LispObject::Integer(i) => print!("{}", i),
+        LispObject::String(s) => print!("\"{}\"", s),
+        LispObject::Vector(vec) => prn_list(vec),
+        LispObject::Fn(_) => print!("#<FN>")
     }
 }
