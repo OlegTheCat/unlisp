@@ -1,5 +1,6 @@
-use object::LispObject;
-use object::Symbol;
+use core;
+use core::LispObject;
+use core::Symbol;
 use im::Vector;
 
 fn prn_list(vec: &Vector<LispObject>) {
@@ -25,6 +26,10 @@ pub fn prn(form: &LispObject) {
         LispObject::Integer(i) => print!("{}", i),
         LispObject::String(s) => print!("\"{}\"", s),
         LispObject::Vector(vec) => prn_list(vec),
-        LispObject::Fn(_) => print!("#<FN>")
+        LispObject::Fn(core::Function::NativeFunction(_)) =>
+            print!("#<NATIVE-FN>"),
+        LispObject::Fn(core::Function::InterpretedFunction{..}) =>
+            print!("#<INTERPRETED-FN>")
+
     }
 }

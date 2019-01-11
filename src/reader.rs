@@ -1,7 +1,7 @@
 use std::io;
 use std::io::Read;
-use object::LispObject;
-use object::Symbol;
+use core::LispObject;
+use core::Symbol;
 
 use super::lexer::Token;
 use super::lexer::Lexer;

@@ -6,10 +6,12 @@ extern crate im;
 
 mod pushback_reader;
 mod lexer;
-mod object;
+mod core;
+mod native_fn_helpers;
 mod reader;
 mod eval;
 mod print;
+
 
 fn main() {
     let stdin = io::stdin();
@@ -17,7 +19,8 @@ fn main() {
     print!(">>> ");
     io::stdout().flush().unwrap();
 
-    let mut env = eval::Env::new();
+    let mut env = core::Env::new();
+    eval::prepare_stdlib(&mut env);
 
     for line in stdin.lock().lines() {
 
