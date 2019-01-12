@@ -7,7 +7,7 @@ use core::EnvFrame;
 
 
 define_vararg_native_fn! {
-    add(_env, ... args: core::to_i64) -> LispObject::Integer {
+    native_add(_env, ... args: core::to_i64) -> LispObject::Integer {
         let mut res = 0;
         for arg in args {
             res += arg
@@ -17,7 +17,7 @@ define_vararg_native_fn! {
 }
 
 define_vararg_native_fn! {
-    sub(_env, from: core::to_i64, ... args: core::to_i64) -> LispObject::Integer {
+    native_sub(_env, from: core::to_i64, ... args: core::to_i64) -> LispObject::Integer {
         let mut res = from;
         for arg in args {
             res -= arg
@@ -26,15 +26,14 @@ define_vararg_native_fn! {
     }
 }
 
-
 define_vararg_native_fn! {
-    list(_env, ... args: core::identity) -> LispObject::Vector {
+    native_list(_env, ... args: core::identity) -> LispObject::Vector {
         args
     }
 }
 
 define_native_fn!{
-    cons(_env, item: core::identity, list: core::to_vector) -> LispObject::Vector {
+    native_cons(_env, item: core::identity, list: core::to_vector) -> LispObject::Vector {
         list.push_front(item);
         list
     }
@@ -43,16 +42,16 @@ define_native_fn!{
 fn fill_stdlib(global_frame: &mut EnvFrame) {
     global_frame.fn_env.insert(Symbol("add".to_owned()),
                                core::Function::NativeFunction(
-                                   core::NativeFnWrapper(add)));
+                                   core::NativeFnWrapper(native_add)));
     global_frame.fn_env.insert(Symbol("list".to_owned()),
                                core::Function::NativeFunction(
-                                   core::NativeFnWrapper(list)));
+                                   core::NativeFnWrapper(native_list)));
     global_frame.fn_env.insert(Symbol("cons".to_owned()),
                                core::Function::NativeFunction(
-                                   core::NativeFnWrapper(cons)));
+                                   core::NativeFnWrapper(native_cons)));
     global_frame.fn_env.insert(Symbol("sub".to_owned()),
                                core::Function::NativeFunction(
-                                   core::NativeFnWrapper(sub)));
+                                   core::NativeFnWrapper(native_sub)));
 }
 
 pub fn prepare_stdlib(env: &mut Env) {
@@ -186,12 +185,12 @@ fn set_fn(env: &mut Env, form: LispObject) -> LispObject {
 
 pub fn eval(env: &mut Env, form: LispObject) -> LispObject {
     match form {
-        LispObject::Nil => LispObject::Nil,
-        LispObject::T => LispObject::T,
-        LispObject::Integer(i) => LispObject::Integer(i),
-        LispObject::String(s) => LispObject::String(s),
+        self_eval @ LispObject::Nil => self_eval,
+        self_eval @ LispObject::T => self_eval,
+        self_eval @ LispObject::Integer(_) => self_eval,
+        self_eval @ LispObject::String(_) => self_eval,
+        self_eval @ LispObject::Fn(_) => self_eval,
         LispObject::Symbol(s) => lookup_symbol_value(env, &s).unwrap(),
-        LispObject::Fn(f) => LispObject::Fn(f),
         LispObject::Vector(ref vec) => {
             match nth(vec.clone(), 0) {
                 LispObject::Fn(core::Function::InterpretedFunction(_)) => call_interpreted_fn(env, form.clone()),

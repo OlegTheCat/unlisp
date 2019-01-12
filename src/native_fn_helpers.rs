@@ -1,10 +1,4 @@
 #![macro_use]
-use im::Vector;
-use core;
-use core::LispObject;
-use core::Symbol;
-use core::Env;
-use core::EnvFrame;
 
 macro_rules! define_vararg_native_fn {
     ($id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
