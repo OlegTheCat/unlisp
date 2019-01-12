@@ -1,15 +1,18 @@
 use im::Vector;
 use im::HashMap;
+use std;
 use std::hash::Hasher;
 use std::hash::Hash;
 use std::fmt;
+use error;
 
 macro_rules! define_unwrapper {
     ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
-        pub fn $id(arg: $enum) -> $to {
+        pub fn $id(arg: $enum) -> Result<$to, error::CastError> {
             match arg {
-                $enum::$from(x) => x,
-                x => panic!("Cannot convert {} to {}", stringify!(x), stringify!($to))
+                $enum::$from(x) => Ok(x),
+                x => Err(error::CastError::new(format!("{:?}", x).to_string(),
+                                               stringify!($to).to_string()))
             }
         }
     }
@@ -54,7 +57,8 @@ impl Env {
 }
 
 #[derive(Clone)]
-pub struct NativeFnWrapper(pub fn(&mut Env, LispObject) -> LispObject);
+pub struct NativeFnWrapper(pub fn(&mut Env, LispObject)
+                                  -> error::GenResult<LispObject>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct InterpretedFnWrapper {
@@ -112,4 +116,6 @@ define_unwrapper!(to_string(LispObject :: String) -> String);
 define_unwrapper!(to_vector(LispObject :: Vector) -> Vector<LispObject>);
 define_unwrapper!(to_function(LispObject :: Fn) -> Function);
 
-pub fn identity<T>(v: T) -> T { v }
+pub fn identity_converter(v: LispObject) -> error::GenResult<LispObject> {
+    Ok(v)
+}

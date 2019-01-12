@@ -9,6 +9,7 @@ mod lexer;
 mod core;
 mod native_fn_helpers;
 mod reader;
+mod error;
 mod eval;
 mod print;
 
@@ -30,8 +31,13 @@ fn main() {
 
         match reader.read_form() {
             Ok(form) => {
-                print::prn(&eval::eval(&mut env, form));
-                println!("");
+                match eval::eval(&mut env, form) {
+                    Ok(lo) => {
+                        print::prn(&lo);
+                        println!("");
+                    },
+                    Err(e) => println!("error: {}", e.description())
+                }
             },
             Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof =>
                 println!("EOF error"),
