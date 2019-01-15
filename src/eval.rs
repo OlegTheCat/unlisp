@@ -27,6 +27,28 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    native_mul(_env, from: core::to_i64, ... args: core::to_i64) -> LispObject::Integer {
+        let mut res = from;
+        for arg in args {
+            res *= arg
+        }
+        res
+    }
+}
+
+
+define_native_fn! {
+    native_int_eq(_env, x: core::to_i64, y: core::to_i64) -> core::identity {
+        if x == y {
+            LispObject::T
+        } else {
+            LispObject::Nil
+        }
+    }
+}
+
+
+define_native_fn! {
     native_list(_env, ... args: core::identity_converter) -> LispObject::Vector {
         args
     }
@@ -52,6 +74,12 @@ fn fill_stdlib(global_frame: &mut EnvFrame) {
     global_frame.fn_env.insert(Symbol("sub".to_owned()),
                                core::Function::NativeFunction(
                                    core::NativeFnWrapper(native_sub)));
+    global_frame.fn_env.insert(Symbol("mul".to_owned()),
+                               core::Function::NativeFunction(
+                                   core::NativeFnWrapper(native_mul)));
+    global_frame.fn_env.insert(Symbol("inteq".to_owned()),
+                               core::Function::NativeFunction(
+                                   core::NativeFnWrapper(native_int_eq)));
 }
 
 fn syntax_err(message: &str) -> error::SyntaxError {
@@ -147,7 +175,7 @@ fn lambda_form(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject>
 
     Ok(LispObject::Fn(
         core::Function::InterpretedFunction(
-            core::InterpretedFnWrapper {
+            core::InterpretedFn {
                 arglist: arglist,
                 body: body
             })))
@@ -221,6 +249,22 @@ fn set_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     Ok(LispObject::Nil)
 }
 
+fn if_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+    let form = core::to_vector(form)?;
+
+    let cond = nth(form.clone(), 1).ok_or(syntax_err("no condition in if"))?;
+    let then_form = nth(form.clone(), 2).ok_or(syntax_err("no then in if"))?;
+    let else_form = nth(form.clone(), 3).unwrap_or(LispObject::Nil);
+
+    let cond = eval(env, cond)?;
+    if cond == LispObject::Nil {
+        eval(env, else_form)
+    } else {
+        eval(env, then_form)
+    }
+
+}
+
 pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     match form {
         self_eval @ LispObject::Nil => Ok(self_eval),
@@ -240,6 +284,7 @@ pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
                 LispObject::Fn(core::Function::InterpretedFunction(_)) => call_interpreted_fn(env, form.clone()),
                 LispObject::Fn(core::Function::NativeFunction(_)) => call_native_fn(env, form.clone()),
                 LispObject::Symbol(Symbol(ref s)) if s == "let" => let_form(env, form.clone()),
+                LispObject::Symbol(Symbol(ref s)) if s == "if" => if_form(env, form.clone()),
                 LispObject::Symbol(Symbol(ref s)) if s == "quote" => quote_form(env, form.clone()),
                 LispObject::Symbol(Symbol(ref s)) if s == "lambda" => lambda_form(env, form.clone()),
                 LispObject::Symbol(Symbol(ref s)) if s == "funcall" => funcall(env, form.clone()),

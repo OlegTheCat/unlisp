@@ -1,6 +1,5 @@
 use im::Vector;
 use im::HashMap;
-use std;
 use std::hash::Hasher;
 use std::hash::Hash;
 use std::fmt;
@@ -61,18 +60,18 @@ pub struct NativeFnWrapper(pub fn(&mut Env, LispObject)
                                   -> error::GenResult<LispObject>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct InterpretedFnWrapper {
+pub struct InterpretedFn {
     pub arglist: Vector<Symbol>,
     pub body: Vector<LispObject>
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Function {
-    InterpretedFunction(InterpretedFnWrapper),
+    InterpretedFunction(InterpretedFn),
     NativeFunction(NativeFnWrapper)
 }
 
-define_unwrapper!(to_interpreted_function(Function::InterpretedFunction) -> InterpretedFnWrapper);
+define_unwrapper!(to_interpreted_function(Function::InterpretedFunction) -> InterpretedFn);
 define_unwrapper!(to_native_function(Function::NativeFunction) -> NativeFnWrapper);
 
 impl fmt::Debug for NativeFnWrapper {
@@ -118,4 +117,8 @@ define_unwrapper!(to_function(LispObject :: Fn) -> Function);
 
 pub fn identity_converter(v: LispObject) -> error::GenResult<LispObject> {
     Ok(v)
+}
+
+pub fn identity(v: LispObject) -> LispObject {
+    v
 }
