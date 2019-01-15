@@ -61,6 +61,19 @@ define_native_fn!{
     }
 }
 
+define_native_fn!{
+    native_list_star(_env, ... args: core::identity_converter) -> LispObject::Vector {
+        let len = args.len();
+        let mut list = core::to_vector(args.remove(len - 1))?;
+        for arg in args.into_iter().rev() {
+            list.push_front(arg);
+        }
+
+        list
+    }
+}
+
+
 fn fill_stdlib(global_frame: &mut EnvFrame) {
     global_frame.fn_env.insert(Symbol("add".to_owned()),
                                core::Function::NativeFunction(
@@ -80,6 +93,9 @@ fn fill_stdlib(global_frame: &mut EnvFrame) {
     global_frame.fn_env.insert(Symbol("inteq".to_owned()),
                                core::Function::NativeFunction(
                                    core::NativeFnWrapper(native_int_eq)));
+    global_frame.fn_env.insert(Symbol("liststar".to_owned()),
+                               core::Function::NativeFunction(
+                                   core::NativeFnWrapper(native_list_star)));
 }
 
 fn syntax_err(message: &str) -> error::SyntaxError {
