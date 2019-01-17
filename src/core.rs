@@ -10,14 +10,14 @@ macro_rules! define_unwrapper {
         pub fn $id(arg: $enum) -> Result<$to, error::CastError> {
             match arg {
                 $enum::$from(x) => Ok(x),
-                x => Err(error::CastError::new(format!("{:?}", x).to_string(),
+                x => Err(error::CastError::new(format!("{}", x).to_string(),
                                                stringify!($to).to_string()))
             }
         }
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Clone)]
 pub struct EnvFrame {
     pub sym_env: HashMap<Symbol, LispObject>,
     pub fn_env: HashMap<Symbol, Function>
@@ -33,25 +33,44 @@ impl EnvFrame {
 
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
+pub struct GlobalEnvFrame {
+    pub sym_env: HashMap<Symbol, LispObject>,
+    pub fn_env: HashMap<Symbol, Function>,
+    pub special_env: HashMap<Symbol, NativeFnWrapper>,
+}
+
+impl GlobalEnvFrame {
+    pub fn new() -> GlobalEnvFrame {
+        GlobalEnvFrame {
+            sym_env: HashMap::new(),
+            fn_env: HashMap::new(),
+            special_env: HashMap::new()
+        }
+    }
+
+}
+
+#[derive(Debug, Clone)]
 pub struct Env {
+    pub global_env: GlobalEnvFrame,
     pub envs: Vector<EnvFrame>
 }
 
 impl Env {
     pub fn new() -> Env {
-        let frame = EnvFrame::new();
-        let mut envs = Vector::new();
-        envs.push_back(frame);
-        Env{
-            envs: envs
+        Env {
+            global_env: GlobalEnvFrame::new(),
+            envs: Vector::new()
         }
     }
 
-    pub fn push_frame(&self, frame: EnvFrame) -> Env {
-        let mut new_env = self.clone();
-        new_env.envs.push_front(frame);
-        new_env
+    pub fn push_frame(&mut self, frame: EnvFrame)  {
+        self.envs.push_front(frame);
+    }
+
+    pub fn pop_frame(&mut self) {
+        self.envs.pop_front();
     }
 }
 
@@ -106,7 +125,9 @@ pub enum LispObject {
     Integer(i64),
     String(String),
     Vector(Vector<LispObject>),
-    Fn(Function)
+    Fn(Function),
+    Macro(Function),
+    Special(NativeFnWrapper)
 }
 
 define_unwrapper!(to_symbol(LispObject :: Symbol) -> Symbol);
@@ -114,6 +135,8 @@ define_unwrapper!(to_i64(LispObject :: Integer) -> i64);
 define_unwrapper!(to_string(LispObject :: String) -> String);
 define_unwrapper!(to_vector(LispObject :: Vector) -> Vector<LispObject>);
 define_unwrapper!(to_function(LispObject :: Fn) -> Function);
+define_unwrapper!(to_special(LispObject :: Special) -> NativeFnWrapper);
+define_unwrapper!(to_macro(LispObject :: Macro) -> Function);
 
 pub fn identity_converter(v: LispObject) -> error::GenResult<LispObject> {
     Ok(v)

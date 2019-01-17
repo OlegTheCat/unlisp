@@ -5,3 +5,4 @@ authors = ["oleh.palianytsia <oleh.palianytsia@protonmail.com>"]
 
 [dependencies]
 im = "12.2.0"
+scopeguard = "1.0.0"

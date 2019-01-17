@@ -5,6 +5,7 @@ use core::Symbol;
 use core::Env;
 use core::EnvFrame;
 use error;
+use scopeguard::guard;
 
 define_native_fn! {
     native_add(_env, ... args: core::to_i64) -> LispObject::Integer {
@@ -74,127 +75,68 @@ define_native_fn!{
 }
 
 
-fn fill_stdlib(global_frame: &mut EnvFrame) {
-    global_frame.fn_env.insert(Symbol("add".to_owned()),
-                               core::Function::NativeFunction(
-                                   core::NativeFnWrapper(native_add)));
-    global_frame.fn_env.insert(Symbol("list".to_owned()),
-                               core::Function::NativeFunction(
-                                   core::NativeFnWrapper(native_list)));
-    global_frame.fn_env.insert(Symbol("cons".to_owned()),
-                               core::Function::NativeFunction(
-                                   core::NativeFnWrapper(native_cons)));
-    global_frame.fn_env.insert(Symbol("sub".to_owned()),
-                               core::Function::NativeFunction(
-                                   core::NativeFnWrapper(native_sub)));
-    global_frame.fn_env.insert(Symbol("mul".to_owned()),
-                               core::Function::NativeFunction(
-                                   core::NativeFnWrapper(native_mul)));
-    global_frame.fn_env.insert(Symbol("inteq".to_owned()),
-                               core::Function::NativeFunction(
-                                   core::NativeFnWrapper(native_int_eq)));
-    global_frame.fn_env.insert(Symbol("liststar".to_owned()),
-                               core::Function::NativeFunction(
-                                   core::NativeFnWrapper(native_list_star)));
-}
-
-fn syntax_err(message: &str) -> error::SyntaxError {
-    error::SyntaxError::new(message.to_string())
+fn fill_stdlib(frame: &mut core::GlobalEnvFrame) {
+    frame.fn_env.insert(Symbol("add".to_owned()),
+                        core::Function::NativeFunction(
+                            core::NativeFnWrapper(native_add)));
+    frame.fn_env.insert(Symbol("list".to_owned()),
+                        core::Function::NativeFunction(
+                            core::NativeFnWrapper(native_list)));
+    frame.fn_env.insert(Symbol("cons".to_owned()),
+                        core::Function::NativeFunction(
+                            core::NativeFnWrapper(native_cons)));
+    frame.fn_env.insert(Symbol("sub".to_owned()),
+                        core::Function::NativeFunction(
+                            core::NativeFnWrapper(native_sub)));
+    frame.fn_env.insert(Symbol("mul".to_owned()),
+                        core::Function::NativeFunction(
+                            core::NativeFnWrapper(native_mul)));
+    frame.fn_env.insert(Symbol("inteq".to_owned()),
+                        core::Function::NativeFunction(
+                            core::NativeFnWrapper(native_int_eq)));
+    frame.fn_env.insert(Symbol("liststar".to_owned()),
+                        core::Function::NativeFunction(
+                            core::NativeFnWrapper(native_list_star)));
 }
 
 pub fn prepare_stdlib(env: &mut Env) {
-    fill_stdlib(env.envs.iter_mut().last().unwrap())
+    fill_stdlib(&mut env.global_env);
 }
 
 fn nth(vec: Vector<LispObject>, i: usize) -> Option<LispObject> {
     vec.into_iter().nth(i)
 }
 
+fn syntax_err(message: &str) -> error::SyntaxError {
+    error::SyntaxError::new(message.to_string())
+}
+
 fn lookup_symbol_value(env: &mut Env, s: &Symbol) -> Option<LispObject> {
     for frame in &env.envs {
-        let val = frame.sym_env.get(s);
-        if val.is_some() {
-            return Some(val.unwrap().clone());
+        if let Some(val) = frame.sym_env.get(s) {
+            return Some(val.clone());
         }
     }
 
-    None
+    if let Some(val) = env.global_env.sym_env.get(s) {
+        Some(val.clone())
+    } else {
+        None
+    }
 }
 
 fn lookup_symbol_fn(env: &mut Env, s: &Symbol) -> Option<core::Function> {
     for frame in &env.envs {
-        let val = frame.fn_env.get(s);
-        if val.is_some() {
-            return Some(val.unwrap().clone());
+        if let Some(val) = frame.fn_env.get(s) {
+            return Some(val.clone());
         }
     }
 
-    None
-}
-
-fn let_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-    let bindings = nth(form.clone(), 1).ok_or(syntax_err("no bindings in let"))?;
-    let bindings = core::to_vector(bindings)
-        .map_err(|_e| syntax_err("let bindings are not a list"))?;
-    let mut new_env = env.clone();
-
-    for binding in bindings {
-        let binding = core::to_vector(binding)
-            .map_err(|_e| syntax_err("let binding is not a list"))?;
-        let sym = nth(binding.clone(), 0)
-            .ok_or(syntax_err("empty binding clause"))?;
-        let sym = core::to_symbol(sym)
-            .map_err(|_e| syntax_err("not a symbol in binding clause"))?;
-
-        let val = nth(binding.clone(), 1)
-            .ok_or(syntax_err("no value in binding clause"))?;
-        let val = eval(env, val)?;
-        let mut env_frame = EnvFrame::new();
-        env_frame.sym_env.insert(sym, val);
-        new_env = new_env.push_frame(env_frame);
+    if let Some(val) = env.global_env.fn_env.get(s) {
+        Some(val.clone())
+    } else {
+        None
     }
-
-    let body = form.clone().slice(2..);
-    let mut res = LispObject::Nil;
-    for form in body {
-        res = eval(&mut new_env, form)?;
-    }
-
-    Ok(res)
-}
-
-fn quote_form(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-    if form.len() != 2 {
-        return Err(Box::new(error::ArityError::new(1, form.len() - 1,
-                                                   "quote".to_string())))
-    }
-
-    Ok(nth(form, 1).unwrap())
-}
-
-fn lambda_form(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-
-    let arglist = nth(form.clone(), 1)
-        .ok_or(syntax_err("no arglist in lambda"))?;
-    let arglist = core::to_vector(arglist)
-        .map_err(|_e| syntax_err("lambda arglist in not a list"))?;
-    let arglist = arglist
-        .into_iter()
-        .map(|lo| core::to_symbol(lo)
-             .map_err(|_e| syntax_err("expected symbol in arglist")))
-        .collect::<Result<Vector<_>, _>>()?;
-
-    let body = form.clone().slice(2..);
-
-    Ok(LispObject::Fn(
-        core::Function::InterpretedFunction(
-            core::InterpretedFn {
-                arglist: arglist,
-                body: body
-            })))
 }
 
 fn call_interpreted_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
@@ -229,11 +171,11 @@ fn call_interpreted_fn(env: &mut Env, form: LispObject) -> error::GenResult<Lisp
         frame.sym_env.insert(sym, val);
     }
 
-    let mut new_env = env.push_frame(frame);
+    env.push_frame(frame);
 
     let mut result = LispObject::Nil;
     for form in func.body {
-        result = eval(&mut new_env, form)?;
+        result = eval(env, form)?;
     }
 
     Ok(result)
@@ -251,55 +193,19 @@ fn call_native_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObjec
     func.0(env, LispObject::Vector(prepared_form))
 }
 
-fn funcall(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
+fn call_symbol(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+    let mut form = core::to_vector(form)?;
+    let sym = core::to_symbol(form[0].clone())?;
 
-    let func = nth(form.clone(), 1).unwrap();
-    let func = core::to_function(eval(env, func)?)?;
-    let mut args = form.clone().slice(2..);
-    args.push_front(LispObject::Fn(func));
-    eval(env, LispObject::Vector(args))
-}
-
-fn set_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-
-    let sym = nth(form.clone(), 1).ok_or(syntax_err("no symbol in setfn"))?;
-    let sym = core::to_symbol(sym).map_err(|_e| syntax_err("not a symbol in setfn"))?;
-
-    let func = nth(form.clone(), 2).ok_or(syntax_err("no function in setfn"))?;
-    let func = core::to_function(eval(env, func)?)?;
-    let envs = &mut env.envs;
-    envs.iter_mut().last().unwrap().fn_env.insert(sym, func);
-    Ok(LispObject::Nil)
-}
-
-fn if_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-
-    let cond = nth(form.clone(), 1).ok_or(syntax_err("no condition in if"))?;
-    let then_form = nth(form.clone(), 2).ok_or(syntax_err("no then in if"))?;
-    let else_form = nth(form.clone(), 3).unwrap_or(LispObject::Nil);
-
-    let cond = eval(env, cond)?;
-    if cond == LispObject::Nil {
-        eval(env, else_form)
+    if let Some(&core::NativeFnWrapper(f)) = env.global_env.special_env.get(&sym) {
+        f(env, LispObject::Vector(form))
+    } else if let Some(lo) = lookup_symbol_fn(env, &sym) {
+        form.pop_front();
+        form.push_front(LispObject::Fn(lo));
+        eval(env, LispObject::Vector(form))
     } else {
-        eval(env, then_form)
+        Err(Box::new(error::UndefinedSymbol::new(sym.0.to_string(), true)))
     }
-
-}
-
-fn expand_quasiquote(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-    if form.len() != 2 {
-        return Err(Box::new(error::ArityError::new(1, form.len() - 1,
-                                                   "qquote".to_string())))
-    }
-
-    let form = nth(form, 1).unwrap();
-
-    Ok(form)
 }
 
 pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
@@ -309,6 +215,10 @@ pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
         self_eval @ LispObject::Integer(_) => Ok(self_eval),
         self_eval @ LispObject::String(_) => Ok(self_eval),
         self_eval @ LispObject::Fn(_) => Ok(self_eval),
+
+        LispObject::Special(_) => Err(Box::new(syntax_err("standalone special"))),
+        LispObject::Macro(_) => Err(Box::new(syntax_err("standalone macro"))),
+
         LispObject::Vector(ref vec) if vec.len() == 0 => {
             Ok(LispObject::Vector(vec.clone()))
         },
@@ -320,20 +230,7 @@ pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
             match nth(vec.clone(), 0).unwrap() {
                 LispObject::Fn(core::Function::InterpretedFunction(_)) => call_interpreted_fn(env, form.clone()),
                 LispObject::Fn(core::Function::NativeFunction(_)) => call_native_fn(env, form.clone()),
-                LispObject::Symbol(Symbol(ref s)) if s == "let" => let_form(env, form.clone()),
-                LispObject::Symbol(Symbol(ref s)) if s == "if" => if_form(env, form.clone()),
-                LispObject::Symbol(Symbol(ref s)) if s == "quote" => quote_form(env, form.clone()),
-                LispObject::Symbol(Symbol(ref s)) if s == "lambda" => lambda_form(env, form.clone()),
-                LispObject::Symbol(Symbol(ref s)) if s == "funcall" => funcall(env, form.clone()),
-                LispObject::Symbol(Symbol(ref s)) if s == "setfn" => set_fn(env, form.clone()),
-                LispObject::Symbol(Symbol(ref s)) if s == "qquote" => expand_quasiquote(env, form.clone()),
-                LispObject::Symbol(s) => {
-                    let f = lookup_symbol_fn(env, &s)
-                        .ok_or(Box::new(error::UndefinedSymbol::new(s.0, true)))?;
-                    let mut new_form = vec.clone().slice(1..);
-                    new_form.push_front(LispObject::Fn(f));
-                    eval(env, LispObject::Vector(new_form))
-                },
+                LispObject::Symbol(_) => call_symbol(env, form.clone()),
                 head => {
                     let head_val = eval(env, head)?;
                     let mut new_form = vec.clone().slice(1..);

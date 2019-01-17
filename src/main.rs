@@ -3,6 +3,7 @@ use std::io::BufRead;
 use std::io::Write;
 
 extern crate im;
+#[macro_use(defer)] extern crate scopeguard;
 
 mod pushback_reader;
 mod lexer;
@@ -12,7 +13,7 @@ mod reader;
 mod error;
 mod eval;
 mod print;
-
+mod special;
 
 fn main() {
     let stdin = io::stdin();
@@ -21,6 +22,7 @@ fn main() {
     io::stdout().flush().unwrap();
 
     let mut env = core::Env::new();
+    special::prepare_specials(&mut env);
     eval::prepare_stdlib(&mut env);
 
     for line in stdin.lock().lines() {
