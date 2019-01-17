@@ -6,7 +6,8 @@ use core::Env;
 use core::EnvFrame;
 use error;
 use eval::eval;
-use std::cell;
+use std::ops::DerefMut;
+use scopeguard::guard;
 
 fn nth(vec: Vector<LispObject>, i: usize) -> Option<LispObject> {
     vec.into_iter().nth(i)
@@ -41,19 +42,17 @@ fn let_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
         env.push_frame(env_frame);
     }
 
-    let env_ref = cell::RefCell::new(env);
-
-    defer!{
+    let mut env = guard(env, |env| {
         for _ in 0..bindings_len {
-            env_ref.borrow_mut().pop_frame();
+            env.pop_frame();
         }
-    }
+    });
 
     let body = form.clone().slice(2..);
     let mut res = LispObject::Nil;
 
     for form in body {
-        res = eval(&mut *env_ref.borrow_mut(), form)?;
+        res = eval(env.deref_mut(), form)?;
     }
 
     Ok(res)
