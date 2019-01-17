@@ -1,4 +1,5 @@
 use im::Vector;
+use std::cell;
 use core;
 use core::LispObject;
 use core::Symbol;
@@ -173,9 +174,13 @@ fn call_interpreted_fn(env: &mut Env, form: LispObject) -> error::GenResult<Lisp
 
     env.push_frame(frame);
 
+    let env_ref = cell::RefCell::new(env);
+
+    defer!(env_ref.borrow_mut().pop_frame());
+
     let mut result = LispObject::Nil;
     for form in func.body {
-        result = eval(env, form)?;
+        result = eval(&mut *env_ref.borrow_mut(), form)?;
     }
 
     Ok(result)

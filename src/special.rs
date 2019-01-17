@@ -6,6 +6,7 @@ use core::Env;
 use core::EnvFrame;
 use error;
 use eval::eval;
+use std::cell;
 
 fn nth(vec: Vector<LispObject>, i: usize) -> Option<LispObject> {
     vec.into_iter().nth(i)
@@ -21,7 +22,7 @@ fn let_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let bindings = core::to_vector(bindings)
         .map_err(|_e| syntax_err("let bindings are not a list"))?;
 
-    // let bindings_len = bindings.len();
+    let bindings_len = bindings.len();
 
     for binding in bindings {
         let binding = core::to_vector(binding)
@@ -40,16 +41,19 @@ fn let_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
         env.push_frame(env_frame);
     }
 
-    // defer!{
-    //     for _ in 0..bindings_len {
-    //         env.pop_frame();
-    //     }
-    // }
+    let env_ref = cell::RefCell::new(env);
+
+    defer!{
+        for _ in 0..bindings_len {
+            env_ref.borrow_mut().pop_frame();
+        }
+    }
 
     let body = form.clone().slice(2..);
     let mut res = LispObject::Nil;
+
     for form in body {
-        res = eval(env, form)?;
+        res = eval(&mut *env_ref.borrow_mut(), form)?;
     }
 
     Ok(res)
@@ -108,8 +112,8 @@ fn set_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
 
     let func = nth(form.clone(), 2).ok_or(syntax_err("no function in setfn"))?;
     let func = core::to_function(eval(env, func)?)?;
-    let envs = &mut env.envs;
-    envs.iter_mut().last().unwrap().fn_env.insert(sym, func);
+
+    env.global_env.fn_env.insert(sym, func);
     Ok(LispObject::Nil)
 }
 
