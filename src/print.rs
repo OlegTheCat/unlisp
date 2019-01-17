@@ -1,35 +1,37 @@
+use std::fmt;
 use core;
 use core::LispObject;
-use core::Symbol;
 use im::Vector;
 
-fn prn_list(vec: &Vector<LispObject>) {
+fn write_vector(f: &mut fmt::Formatter, vec: &Vector<LispObject>)
+                -> Result<(), fmt::Error> {
     let mut first = true;
 
-    print!("(");
+    write!(f, "(")?;
 
     for form in vec {
         if !first {
-            print!(" ");
+            write!(f, " ")?;
         }
-        prn(form);
+        write!(f, "{}", form)?;
         first = false;
     }
-    print!(")");
+    write!(f, ")")
 }
 
-pub fn prn(form: &LispObject) {
-    match form {
-        LispObject::Nil => print!("NIL"),
-        LispObject::T => print!("T"),
-        LispObject::Symbol(Symbol(s)) => print!("{}", s),
-        LispObject::Integer(i) => print!("{}", i),
-        LispObject::String(s) => print!("\"{}\"", s),
-        LispObject::Vector(vec) => prn_list(vec),
-        LispObject::Fn(core::Function::NativeFunction(_)) =>
-            print!("#<NATIVE-FN>"),
-        LispObject::Fn(core::Function::InterpretedFunction{..}) =>
-            print!("#<INTERPRETED-FN>")
-
+impl fmt::Display for core::LispObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match self {
+            LispObject::Nil => write!(f, "NIL"),
+            LispObject::T => write!(f, "T"),
+            LispObject::Integer(i) => write!(f, "{}", i),
+            LispObject::String(s) => write!(f, "\"{}\"", s),
+            LispObject::Fn(core::Function::NativeFunction(_)) =>
+                write!(f, "#<NATIVE-FN>"),
+            LispObject::Fn(core::Function::InterpretedFunction(_)) =>
+                write!(f, "#<INTERPRETED-FN>"),
+            LispObject::Symbol(core::Symbol(s)) => write!(f, "{}", s),
+            LispObject::Vector(vec) => write_vector(f, vec)
+        }
     }
 }

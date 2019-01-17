@@ -94,14 +94,18 @@ impl std::error::Error for SyntaxError {
 #[derive(Debug, Clone)]
 pub struct UndefinedSymbol {
     message: String,
-    symbol_name: String
+    symbol_name: String,
+    is_fn: bool
 }
 
 impl UndefinedSymbol {
-    pub fn new(symbol_name: String) -> UndefinedSymbol {
+    pub fn new(symbol_name: String, is_fn: bool) -> UndefinedSymbol {
         UndefinedSymbol {
-            message: format!("undefined symbol {}", &symbol_name),
-            symbol_name: symbol_name
+            message: format!("undefined {} {}",
+                             if is_fn { "function" } else { "symbol" },
+                             &symbol_name),
+            symbol_name: symbol_name,
+            is_fn: is_fn
         }
     }
 }

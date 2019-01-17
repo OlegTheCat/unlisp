@@ -204,10 +204,19 @@ fn call_interpreted_fn(env: &mut Env, form: LispObject) -> error::GenResult<Lisp
 
     let args = form.clone().slice(1..);
     if func.arglist.len() != args.len() {
+        let expected = func.arglist.len();
+        let actual = args.len();
+        let arglist_as_vec = LispObject::Vector(
+            func.arglist
+                .into_iter()
+                .map(|s| LispObject::Symbol(s))
+                .collect());
+
         return Err(Box::new(
-            error::ArityError::new(func.arglist.len(),
-                                   args.len(),
-                                   format!("(lambda {:?})", &func.arglist))));
+            error::ArityError::new(expected,
+                                   actual,
+                                   format!("(lambda {} ...)",
+                                           arglist_as_vec))));
     }
 
     let args = args
@@ -281,6 +290,18 @@ fn if_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
 
 }
 
+fn expand_quasiquote(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+    let form = core::to_vector(form)?;
+    if form.len() != 2 {
+        return Err(Box::new(error::ArityError::new(1, form.len() - 1,
+                                                   "qquote".to_string())))
+    }
+
+    let form = nth(form, 1).unwrap();
+
+    Ok(form)
+}
+
 pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     match form {
         self_eval @ LispObject::Nil => Ok(self_eval),
@@ -293,7 +314,7 @@ pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
         },
         LispObject::Symbol(s) => {
             lookup_symbol_value(env, &s)
-                .ok_or(Box::new(error::UndefinedSymbol::new(s.0)))
+                .ok_or(Box::new(error::UndefinedSymbol::new(s.0, false)))
         },
         LispObject::Vector(ref vec) => {
             match nth(vec.clone(), 0).unwrap() {
@@ -305,9 +326,10 @@ pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
                 LispObject::Symbol(Symbol(ref s)) if s == "lambda" => lambda_form(env, form.clone()),
                 LispObject::Symbol(Symbol(ref s)) if s == "funcall" => funcall(env, form.clone()),
                 LispObject::Symbol(Symbol(ref s)) if s == "setfn" => set_fn(env, form.clone()),
+                LispObject::Symbol(Symbol(ref s)) if s == "qquote" => expand_quasiquote(env, form.clone()),
                 LispObject::Symbol(s) => {
                     let f = lookup_symbol_fn(env, &s)
-                        .ok_or(Box::new(error::UndefinedSymbol::new(s.0)))?;
+                        .ok_or(Box::new(error::UndefinedSymbol::new(s.0, true)))?;
                     let mut new_form = vec.clone().slice(1..);
                     new_form.push_front(LispObject::Fn(f));
                     eval(env, LispObject::Vector(new_form))

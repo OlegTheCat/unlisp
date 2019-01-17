@@ -33,10 +33,9 @@ fn main() {
             Ok(form) => {
                 match eval::eval(&mut env, form) {
                     Ok(lo) => {
-                        print::prn(&lo);
-                        println!("");
+                        println!("{}", lo);
                     },
-                    Err(e) => println!("error: {}", e.description())
+                    Err(e) => println!("error: {}", e)
                 }
             },
             Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof =>
