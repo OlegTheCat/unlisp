@@ -1,7 +1,7 @@
 use std::io;
 use std::io::Read;
 
-use super::pushback_reader::PushbackReader;
+use pushback_reader::PushbackReader;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
@@ -19,7 +19,7 @@ pub struct Lexer<'a, T: Read + 'a> {
 
 impl<'a, T: Read> Lexer<'a, T> {
     pub fn create(r: &'a mut T) -> Lexer<'a, T> {
-        Lexer{pbr: PushbackReader::create(r)}
+        Lexer{ pbr: PushbackReader::create(r) }
     }
 
     fn next_char(&mut self) -> io::Result<Option<char>> {

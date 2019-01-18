@@ -1,9 +1,9 @@
 use std::io;
-use std::io::BufRead;
+// use std::io::BufRead;
 use std::io::Write;
 
 extern crate im;
-#[macro_use(defer)] extern crate scopeguard;
+extern crate scopeguard;
 
 mod pushback_reader;
 mod lexer;
@@ -16,7 +16,8 @@ mod print;
 mod special;
 
 fn main() {
-    let stdin = io::stdin();
+
+    let mut stdin = io::stdin();
 
     print!(">>> ");
     io::stdout().flush().unwrap();
@@ -25,12 +26,9 @@ fn main() {
     special::prepare_specials(&mut env);
     eval::prepare_stdlib(&mut env);
 
-    for line in stdin.lock().lines() {
+    let mut reader = reader::Reader::create(&mut stdin);
 
-        let line = line.unwrap();
-        let mut bytes = line.as_bytes();
-        let mut reader = reader::Reader::create(&mut bytes);
-
+    loop {
         match reader.read_form() {
             Ok(form) => {
                 match eval::eval(&mut env, form) {
@@ -42,7 +40,7 @@ fn main() {
             },
             Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof =>
                 println!("EOF error"),
-            Err(_) => println!("Unexpected error.")
+            Err(ref e) => println!("Unexpected error: {}", e)
         }
 
         print!(">>> ");

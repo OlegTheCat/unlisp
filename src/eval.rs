@@ -119,11 +119,7 @@ fn lookup_symbol_value(env: &mut Env, s: &Symbol) -> Option<LispObject> {
         }
     }
 
-    if let Some(val) = env.global_env.sym_env.get(s) {
-        Some(val.clone())
-    } else {
-        None
-    }
+    env.global_env.sym_env.get(s).map(|v| v.clone())
 }
 
 fn lookup_symbol_fn(env: &mut Env, s: &Symbol) -> Option<core::Function> {
@@ -133,12 +129,19 @@ fn lookup_symbol_fn(env: &mut Env, s: &Symbol) -> Option<core::Function> {
         }
     }
 
-    if let Some(val) = env.global_env.fn_env.get(s) {
-        Some(val.clone())
-    } else {
-        None
-    }
+    env.global_env.fn_env.get(s).map(|v| v.clone())
 }
+
+pub fn lookup_symbol_macro(env: &mut Env, s: &Symbol) -> Option<core::Function> {
+    for frame in &env.envs {
+        if let Some(val) = frame.macro_env.get(s) {
+            return Some(val.clone());
+        }
+    }
+
+    env.global_env.macro_env.get(s).map(|v| v.clone())
+}
+
 
 fn call_interpreted_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let form = core::to_vector(form)?;
@@ -196,19 +199,62 @@ fn call_native_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObjec
     func.0(env, LispObject::Vector(prepared_form))
 }
 
+pub fn call_interpreted_macro(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+    let form = core::to_vector(form)?;
+    let func = nth(form.clone(), 0).unwrap();
+    let func = core::to_interpreted_function(core::to_macro(func)?)?;
+
+    let args = form.clone().slice(1..);
+    if func.arglist.len() != args.len() {
+        let expected = func.arglist.len();
+        let actual = args.len();
+        let arglist_as_vec = LispObject::Vector(
+            func.arglist
+                .into_iter()
+                .map(|s| LispObject::Symbol(s))
+                .collect());
+
+        return Err(Box::new(
+            error::ArityError::new(expected,
+                                   actual,
+                                   format!("macro {}",
+                                           arglist_as_vec))));
+    }
+
+    let mut frame = EnvFrame::new();
+    for (sym, val) in func.arglist.into_iter().zip(args.into_iter()) {
+        frame.sym_env.insert(sym, val);
+    }
+
+    env.push_frame(frame);
+
+    let mut env = guard(env, |env| env.pop_frame());
+
+    let mut result = LispObject::Nil;
+    for form in func.body {
+        result = eval(env.deref_mut(), form)?;
+    }
+
+    Ok(result)
+}
+
 fn call_symbol(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let mut form = core::to_vector(form)?;
     let sym = core::to_symbol(form[0].clone())?;
 
-    if let Some(&core::NativeFnWrapper(f)) = env.global_env.special_env.get(&sym) {
-        f(env, LispObject::Vector(form))
-    } else if let Some(lo) = lookup_symbol_fn(env, &sym) {
-        form.pop_front();
-        form.push_front(LispObject::Fn(lo));
-        eval(env, LispObject::Vector(form))
+    let obj = if let Some(&f) = env.global_env.special_env.get(&sym) {
+        LispObject::Special(f)
+    } else if let Some(f) = lookup_symbol_fn(env, &sym) {
+        LispObject::Fn(f)
+    } else if let Some(f) = lookup_symbol_macro(env, &sym) {
+        LispObject::Macro(f)
     } else {
-        Err(Box::new(error::UndefinedSymbol::new(sym.0.to_string(), true)))
-    }
+        return Err(Box::new(error::UndefinedSymbol::new(sym.0.to_string(), true)));
+    };
+
+    form.pop_front();
+    form.push_front(obj);
+    eval(env, LispObject::Vector(form))
 }
 
 pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
@@ -231,9 +277,27 @@ pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
         },
         LispObject::Vector(ref vec) => {
             match nth(vec.clone(), 0).unwrap() {
-                LispObject::Fn(core::Function::InterpretedFunction(_)) => call_interpreted_fn(env, form.clone()),
-                LispObject::Fn(core::Function::NativeFunction(_)) => call_native_fn(env, form.clone()),
-                LispObject::Symbol(_) => call_symbol(env, form.clone()),
+                LispObject::Symbol(_) =>
+                    call_symbol(env, form.clone()),
+
+                LispObject::Fn(core::Function::InterpretedFunction(_)) =>
+                    call_interpreted_fn(env, form.clone()),
+                LispObject::Fn(core::Function::NativeFunction(_)) =>
+                    call_native_fn(env, form.clone()),
+
+                LispObject::Special(core::NativeFnWrapper(f)) =>
+                    f(env, form.clone()),
+
+                LispObject::Macro(core::Function::NativeFunction(
+                    core::NativeFnWrapper(f))) => {
+                    let expanded = f(env, form.clone())?;
+                    eval(env, expanded)
+                },
+                LispObject::Macro(core::Function::InterpretedFunction(_)) => {
+                    let expanded = call_interpreted_macro(env, form.clone())?;
+                    eval(env, expanded)
+                },
+
                 head => {
                     let head_val = eval(env, head)?;
                     let mut new_form = vec.clone().slice(1..);

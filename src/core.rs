@@ -20,14 +20,16 @@ macro_rules! define_unwrapper {
 #[derive(Debug, Clone)]
 pub struct EnvFrame {
     pub sym_env: HashMap<Symbol, LispObject>,
-    pub fn_env: HashMap<Symbol, Function>
+    pub fn_env: HashMap<Symbol, Function>,
+    pub macro_env: HashMap<Symbol, Function>
 }
 
 impl EnvFrame {
     pub fn new() -> EnvFrame {
         EnvFrame {
             sym_env: HashMap::new(),
-            fn_env: HashMap::new()
+            fn_env: HashMap::new(),
+            macro_env: HashMap::new()
         }
     }
 
@@ -37,7 +39,8 @@ impl EnvFrame {
 pub struct GlobalEnvFrame {
     pub sym_env: HashMap<Symbol, LispObject>,
     pub fn_env: HashMap<Symbol, Function>,
-    pub special_env: HashMap<Symbol, NativeFnWrapper>,
+    pub macro_env: HashMap<Symbol, Function>,
+    pub special_env: HashMap<Symbol, NativeFnWrapper>
 }
 
 impl GlobalEnvFrame {
@@ -45,7 +48,8 @@ impl GlobalEnvFrame {
         GlobalEnvFrame {
             sym_env: HashMap::new(),
             fn_env: HashMap::new(),
-            special_env: HashMap::new()
+            special_env: HashMap::new(),
+            macro_env: HashMap::new()
         }
     }
 
