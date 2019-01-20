@@ -121,3 +121,28 @@ impl std::error::Error for UndefinedSymbol {
         &self.message
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct GenericError {
+    message: String
+}
+
+impl GenericError {
+    pub fn new(message: String) -> GenericError {
+        GenericError {
+            message: message
+        }
+    }
+}
+
+impl fmt::Display for GenericError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for GenericError {
+    fn description(&self) -> &str {
+        &self.message
+    }
+}

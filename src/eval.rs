@@ -75,32 +75,94 @@ define_native_fn!{
     }
 }
 
-
-fn fill_stdlib(frame: &mut core::GlobalEnvFrame) {
-    frame.fn_env.insert(Symbol("add".to_owned()),
-                        core::Function::NativeFunction(
-                            core::NativeFnWrapper(native_add)));
-    frame.fn_env.insert(Symbol("list".to_owned()),
-                        core::Function::NativeFunction(
-                            core::NativeFnWrapper(native_list)));
-    frame.fn_env.insert(Symbol("cons".to_owned()),
-                        core::Function::NativeFunction(
-                            core::NativeFnWrapper(native_cons)));
-    frame.fn_env.insert(Symbol("sub".to_owned()),
-                        core::Function::NativeFunction(
-                            core::NativeFnWrapper(native_sub)));
-    frame.fn_env.insert(Symbol("mul".to_owned()),
-                        core::Function::NativeFunction(
-                            core::NativeFnWrapper(native_mul)));
-    frame.fn_env.insert(Symbol("inteq".to_owned()),
-                        core::Function::NativeFunction(
-                            core::NativeFnWrapper(native_int_eq)));
-    frame.fn_env.insert(Symbol("liststar".to_owned()),
-                        core::Function::NativeFunction(
-                            core::NativeFnWrapper(native_list_star)));
+define_native_fn! {
+    native_first(_env, list: core::to_vector) -> core::identity {
+        let first = list.into_iter().next()
+            .ok_or(
+                Box::new(
+                    error::GenericError::new(
+                        "cannot do first on empty list".to_string())))?;
+        first
+    }
 }
 
-pub fn prepare_stdlib(env: &mut Env) {
+define_native_fn! {
+    native_rest(_env, list: core::to_vector) -> LispObject::Vector {
+        list.slice(1..)
+    }
+}
+
+define_native_fn! {
+    native_listp(_env, arg: core::identity_converter) -> core::identity {
+        let converted = core::to_vector(arg);
+        if converted.is_ok() {
+            LispObject::T
+        } else {
+            LispObject::Nil
+        }
+    }
+}
+
+define_native_fn! {
+    native_emptyp(_env, arg: core::to_vector) -> core::identity {
+        if arg.is_empty() {
+            LispObject::T
+        } else {
+            LispObject::Nil
+        }
+    }
+}
+
+define_native_fn! {
+    native_symbolp(_env, arg: core::identity_converter) -> core::identity {
+        let converted = core::to_symbol(arg);
+        if converted.is_ok() {
+            LispObject::T
+        } else {
+            LispObject::Nil
+        }
+    }
+}
+
+define_native_fn! {
+    native_sym_eq(_env, x: core::identity_converter, y: core::identity_converter) -> core::identity {
+        let x = core::to_symbol(x);
+        let y = core::to_symbol(y);
+        if x.is_ok() && y.is_ok() {
+            if x.unwrap() == y.unwrap() {
+                return Ok(LispObject::T)
+            }
+        }
+
+        LispObject::Nil
+    }
+}
+
+
+
+fn fill_stdlib(frame: &mut core::GlobalEnvFrame) {
+    let mut set = |name: &str, f| {
+        frame.fn_env.insert(Symbol(name.to_string()),
+                            core::Function::NativeFunction(
+                                core::NativeFnWrapper(f)));
+    };
+
+    set("add", native_add);
+    set("list", native_list);
+    set("cons", native_cons);
+    set("sub", native_sub);
+    set("mul", native_mul);
+    set("int-eq", native_int_eq);
+    set("list*", native_list_star);
+    set("first", native_first);
+    set("rest", native_rest);
+    set("listp", native_listp);
+    set("emptyp", native_emptyp);
+    set("sym-eq", native_sym_eq);
+    set("symbolp", native_symbolp);
+}
+
+pub fn prepare_native_stdlib(env: &mut Env) {
     fill_stdlib(&mut env.global_env);
 }
 

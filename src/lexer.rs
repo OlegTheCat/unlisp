@@ -85,7 +85,9 @@ impl<'a, T: Read> Lexer<'a, T> {
             }
 
             let c = c.unwrap();
-            if c.is_alphanumeric() {
+            if c.is_alphanumeric()
+                || c == '*'
+                || c == '-' {
                 buf.push(c);
             } else {
                 self.unread_char(c);

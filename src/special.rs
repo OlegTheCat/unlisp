@@ -162,7 +162,7 @@ fn defmacro(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     Ok(LispObject::Nil)
 }
 
-fn macroexpand1(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+fn macroexpand_1(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
 
     let not_a_macro = || syntax_err("arg to macroexpand1 must be a macro call");
 
@@ -193,10 +193,10 @@ pub fn prepare_specials(env: &mut core::Env) {
 
     set("if", if_form);
     set("let", let_form);
-    set("setfn", set_fn);
+    set("set-fn", set_fn);
     set("funcall", funcall);
     set("lambda", lambda_form);
     set("quote", quote_form);
     set("defmacro", defmacro);
-    set("macroexpand1", macroexpand1);
+    set("macroexpand-1", macroexpand_1);
 }

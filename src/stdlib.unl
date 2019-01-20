@@ -1,0 +1,82 @@
+(set-fn
+ append
+ (lambda (x y)
+   (if (emptyp x)
+       y
+       (cons (first x)
+             (append (rest x) y)))))
+
+(set-fn
+ reduce
+ (lambda (f init list)
+   (if (emptyp list)
+       init
+       (reduce
+        f
+        (funcall f init (first list))
+        (rest list)))))
+
+(set-fn
+ reverse-inner
+ (lambda (x acc)
+   (if (emptyp x)
+       acc
+       (reverse-inner
+        (rest x)
+        (cons (first x) acc)))))
+
+(set-fn
+ reverse
+ (lambda (x)
+   (reverse-inner x ())))
+
+(set-fn
+ not
+ (lambda (x)
+   (if x nil t)))
+
+(defmacro qquote (x)
+  (qquote-process x))
+
+(set-fn
+ qquote-process
+ (lambda (x)
+   (if (not (listp x))
+       (list (quote quote) x)
+       (if (emptyp x)
+           (list (quote quote) x)
+           (if (sym-eq (first x) (quote unq))
+               (first (rest x))
+               (if (sym-eq (first x) (quote unqs))
+                (cons nil 1)
+                (qquote-transform-list x)))))))
+
+(set-fn
+ qquote-transform-list
+ (lambda (x)
+   (qquote-transform-list-inner x ())))
+
+(set-fn
+ qquote-transform-list-inner
+ (lambda (x transformed-acc)
+   (if (emptyp x)
+       (list* (quote reduce) (quote (lambda (x y) (append x y)))
+              ()
+              (list (cons (quote list) (reverse transformed-acc))))
+       (qquote-transform-list-inner
+        (rest x)
+        (cons (qquote-transform-list-item (first x))
+              transformed-acc)))))
+
+(set-fn
+ qquote-transform-list-item
+ (lambda (x)
+   (if (not (listp x))
+       (list (quote list) (list (quote quote) x))
+       (if (emptyp x)
+           (list (quote list) (list (quote quote) x))
+           (if (sym-eq (first x) (quote unq))
+               (list (quote list) (first (rest x)))
+               (if (sym-eq (first x) (quote unqs))
+                   (first (rest x))
+                   (list (quote list) (qquote-process x))))))))
