@@ -220,8 +220,7 @@ pub fn call_interpreted_fn(env: &mut Env, form: LispObject, call_macro: bool)
     let args = form.clone().slice(1..);
     let has_restarg = func.restarg.is_some();
 
-    if (!has_restarg && func.arglist.len() != args.len())
-        || (has_restarg && func.arglist.len() > args.len()) {
+    if (args.len() < func.arglist.len()) || (!has_restarg && func.arglist.len() != args.len()) {
             let expected = func.arglist.len();
             let actual = args.len();
             let mut arglist_as_vec = func.arglist
@@ -261,7 +260,7 @@ pub fn call_interpreted_fn(env: &mut Env, form: LispObject, call_macro: bool)
     }
 
     if has_restarg {
-        let restarg = args_iter.collect::<Vector<_>>();
+        let restarg = args_iter.collect();
         frame.sym_env.insert(func.restarg.unwrap(), LispObject::Vector(restarg));
     }
 
