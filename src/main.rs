@@ -44,6 +44,7 @@ fn repl() {
     special::prepare_specials(&mut env);
     eval::prepare_native_stdlib(&mut env);
     eval_stdlib(&mut env);
+
     let mut reader = reader::Reader::create(&mut stdin);
 
     loop {
@@ -68,7 +69,7 @@ fn repl() {
 
 fn main() {
     let child = thread::Builder::new()
-        .stack_size(32 * 1024 * 1024)
+        .stack_size(1024 * 1024 * 1024)
         .spawn(repl)
         .unwrap();
 

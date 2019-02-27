@@ -71,6 +71,25 @@ fn quote_form(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject> 
     Ok(nth(form, 1).unwrap())
 }
 
+fn parse_arglist(arglist: Vector<Symbol>) -> error::GenResult<(Vector<Symbol>, Option<Symbol>)> {
+    let mut iter = arglist.into_iter();
+    let simple_args = iter.by_ref()
+        .take_while(|s| *s != Symbol("&".to_string())).collect();
+
+    let restargs = iter.collect::<Vec<_>>();
+    let restarg = if restargs.is_empty() {
+        None
+    } else {
+        if restargs.len() != 1 {
+            return Err(Box::new(syntax_err("wrong syntax near '&' in lambda")));
+        } else {
+            restargs.into_iter().next()
+        }
+    };
+
+    Ok((simple_args, restarg))
+}
+
 fn lambda_form(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let form = core::to_vector(form)?;
 
@@ -84,13 +103,16 @@ fn lambda_form(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject>
              .map_err(|_e| syntax_err("expected symbol in arglist")))
         .collect::<Result<Vector<_>, _>>()?;
 
+    let (simple_args, restarg) = parse_arglist(arglist)?;
+
     let body = form.clone().slice(2..);
 
     Ok(LispObject::Fn(
         core::Function::InterpretedFunction(
             core::InterpretedFn {
-                arglist: arglist,
-                body: body
+                arglist: simple_args,
+                body: body,
+                restarg: restarg
             })))
 }
 
@@ -107,15 +129,29 @@ fn funcall(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
 fn set_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let form = core::to_vector(form)?;
 
-    let sym = nth(form.clone(), 1).ok_or(syntax_err("no symbol in setfn"))?;
-    let sym = core::to_symbol(sym).map_err(|_e| syntax_err("not a symbol in setfn"))?;
+    let sym = nth(form.clone(), 1).ok_or(syntax_err("no symbol in set-fn"))?;
+    let sym = core::to_symbol(sym).map_err(|_e| syntax_err("not a symbol in set-fn"))?;
 
-    let func = nth(form.clone(), 2).ok_or(syntax_err("no function in setfn"))?;
+    let func = nth(form.clone(), 2).ok_or(syntax_err("no function in set-fn"))?;
     let func = core::to_function(eval(env, func)?)?;
 
     env.global_env.fn_env.insert(sym, func);
     Ok(LispObject::Nil)
 }
+
+fn set_macro_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+    let form = core::to_vector(form)?;
+
+    let sym = nth(form.clone(), 1).ok_or(syntax_err("no symbol in set-macro-fn"))?;
+    let sym = core::to_symbol(sym).map_err(|_e| syntax_err("not a symbol in set-macro-fn"))?;
+
+    let func = nth(form.clone(), 2).ok_or(syntax_err("no function in set-macro-fn"))?;
+    let func = core::to_function(eval(env, func)?)?;
+
+    env.global_env.macro_env.insert(sym, func);
+    Ok(LispObject::Nil)
+}
+
 
 fn if_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let form = core::to_vector(form)?;
@@ -131,35 +167,6 @@ fn if_form(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
         eval(env, then_form)
     }
 
-}
-
-
-fn defmacro(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let mut form = core::to_vector(form)?;
-
-    let name = nth(form.clone(), 1).ok_or(syntax_err("no name in defmacro"))?;
-    let name = core::to_symbol(name)
-        .map_err(|_e| syntax_err("macro name must be a symbol"))?;
-
-    let arglist = nth(form.clone(), 2)
-        .ok_or(syntax_err("no arglist in defmacro"))?;
-    let arglist = core::to_vector(arglist)
-        .map_err(|_e| syntax_err("defmacro arglist is not a list"))?;
-    let arglist = arglist.into_iter()
-        .map(|lo| core::to_symbol(lo))
-        .collect::<Result<Vector<_>, _>>()?;
-
-    let body = form.slice(3..);
-
-    let macro_fn = core::Function::InterpretedFunction(
-        core::InterpretedFn {
-            arglist: arglist,
-            body: body
-        });
-
-    env.global_env.macro_env.insert(name, macro_fn);
-
-    Ok(LispObject::Nil)
 }
 
 fn macroexpand_1(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
@@ -179,7 +186,7 @@ fn macroexpand_1(env: &mut Env, form: LispObject) -> error::GenResult<LispObject
 
     match macro_fn {
         core::Function::InterpretedFunction(_) =>
-            eval::call_interpreted_macro(env, LispObject::Vector(arg_form)),
+            eval::call_interpreted_fn(env, LispObject::Vector(arg_form), true),
         core::Function::NativeFunction(core::NativeFnWrapper(f)) =>
             f(env, LispObject::Vector(arg_form))
     }
@@ -194,9 +201,9 @@ pub fn prepare_specials(env: &mut core::Env) {
     set("if", if_form);
     set("let", let_form);
     set("set-fn", set_fn);
+    set("set-macro-fn", set_macro_fn);
     set("funcall", funcall);
     set("lambda", lambda_form);
     set("quote", quote_form);
-    set("defmacro", defmacro);
     set("macroexpand-1", macroexpand_1);
 }

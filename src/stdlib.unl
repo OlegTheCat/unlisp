@@ -35,8 +35,10 @@
  (lambda (x)
    (if x nil t)))
 
-(defmacro qquote (x)
-  (qquote-process x))
+(set-macro-fn
+ qquote
+ (lambda (x)
+   (qquote-process x)))
 
 (set-fn
  qquote-process
@@ -80,3 +82,35 @@
                (if (sym-eq (first x) (quote unqs))
                    (first (rest x))
                    (list (quote list) (qquote-process x))))))))
+
+(set-fn
+  fibo
+  (lambda (n)
+    (if (int-eq n 1)
+        1
+        (if (int-eq n 0)
+            1
+            (add (fibo (sub n 1))
+                 (fibo (sub n 2)))))))
+
+(set-macro-fn
+ defmacro
+ (lambda (name args & body)
+   (qquote
+    (set-macro-fn
+     (unq name)
+     (lambda (unq args)
+      (unqs body))))))
+
+
+(defmacro strange-let (bindings & body)
+  (reduce
+   (lambda (acc binding)
+     (let ((sym (first binding))
+           (val (first (rest binding))))
+       (qquote
+        ((lambda ((unq sym))
+           (unq acc))
+         (unq val)))))
+   (qquote (let () (unqs body)))
+   (reverse bindings)))

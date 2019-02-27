@@ -17,6 +17,13 @@ pub struct Lexer<'a, T: Read + 'a> {
     pbr: PushbackReader<'a, T>
 }
 
+fn valid_symbol_char(c: char) -> bool {
+    c.is_alphanumeric()
+        || c == '&'
+        || c == '*'
+        || c == '-'
+}
+
 impl<'a, T: Read> Lexer<'a, T> {
     pub fn create(r: &'a mut T) -> Lexer<'a, T> {
         Lexer{ pbr: PushbackReader::create(r) }
@@ -76,6 +83,7 @@ impl<'a, T: Read> Lexer<'a, T> {
         Ok(s.parse::<i64>().unwrap())
     }
 
+
     fn read_symbol(&mut self) -> io::Result<String> {
         let mut buf = Vec::new();
         loop {
@@ -85,9 +93,7 @@ impl<'a, T: Read> Lexer<'a, T> {
             }
 
             let c = c.unwrap();
-            if c.is_alphanumeric()
-                || c == '*'
-                || c == '-' {
+            if valid_symbol_char(c) {
                 buf.push(c);
             } else {
                 self.unread_char(c);
@@ -119,7 +125,7 @@ impl<'a, T: Read> Lexer<'a, T> {
                 Token::IntegerLiteral(self.read_integer_literal()?)
             },
 
-            c if c.is_alphanumeric() => {
+            c if valid_symbol_char(c) => {
                 self.unread_char(c);
                 Token::Symbol(self.read_symbol()?)
             },

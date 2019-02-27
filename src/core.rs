@@ -84,6 +84,7 @@ pub struct NativeFnWrapper(pub fn(&mut Env, LispObject)
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct InterpretedFn {
+    pub restarg: Option<Symbol>,
     pub arglist: Vector<Symbol>,
     pub body: Vector<LispObject>
 }
