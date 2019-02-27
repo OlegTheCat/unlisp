@@ -39,7 +39,7 @@ define_native_fn! {
 }
 
 define_native_fn! {
-    native_int_eq(_env, x: core::to_i64, y: core::to_i64) -> core::identity {
+    native_equal(_env, x: core::identity_converter, y: core::identity_converter) -> core::identity {
         if x == y {
             LispObject::T
         } else {
@@ -122,20 +122,6 @@ define_native_fn! {
     }
 }
 
-define_native_fn! {
-    native_sym_eq(_env, x: core::identity_converter, y: core::identity_converter) -> core::identity {
-        let x = core::to_symbol(x);
-        let y = core::to_symbol(y);
-        if x.is_ok() && y.is_ok() {
-            if x.unwrap() == y.unwrap() {
-                return Ok(LispObject::T)
-            }
-        }
-
-        LispObject::Nil
-    }
-}
-
 fn fill_stdlib(frame: &mut core::GlobalEnvFrame) {
     let mut set = |name: &str, f| {
         frame.fn_env.insert(
@@ -149,13 +135,12 @@ fn fill_stdlib(frame: &mut core::GlobalEnvFrame) {
     set("cons", native_cons);
     set("sub", native_sub);
     set("mul", native_mul);
-    set("int-eq", native_int_eq);
+    set("equal", native_equal);
     set("list*", native_list_star);
     set("first", native_first);
     set("rest", native_rest);
     set("listp", native_listp);
     set("emptyp", native_emptyp);
-    set("sym-eq", native_sym_eq);
     set("symbolp", native_symbolp);
 }
 

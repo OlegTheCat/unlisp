@@ -190,6 +190,13 @@ fn macroexpand_1(env: &mut Env, form: LispObject) -> error::GenResult<LispObject
     }
 }
 
+fn raise_error(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+    let form = core::to_vector(form)?;
+    let arg_form = nth(form, 1).ok_or(syntax_err("no arg in error"))?;
+    let arg = core::to_string(arg_form)?;
+    Err(Box::new(error::GenericError::new(arg)))
+}
+
 pub fn prepare_specials(env: &mut core::Env) {
     let mut set = |s: &str, f| {
         env.global_env
@@ -205,4 +212,5 @@ pub fn prepare_specials(env: &mut core::Env) {
     set("lambda", lambda_form);
     set("quote", quote_form);
     set("macroexpand-1", macroexpand_1);
+    set("error", raise_error);
 }
