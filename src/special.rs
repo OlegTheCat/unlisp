@@ -115,14 +115,18 @@ fn lambda_form(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject>
     )))
 }
 
-fn funcall(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+fn apply(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let form = core::to_vector(form)?;
-
     let func = nth(form.clone(), 1).unwrap();
     let func = core::to_function(eval(env, func)?)?;
-    let mut args = form.clone().slice(2..);
-    args.push_front(LispObject::Fn(func));
-    eval(env, LispObject::Vector(args))
+
+    let mut args = form.clone().slice(2..).into_iter().map(|lo| eval(env, lo)).collect::<error::GenResult<Vector<_>>>()?;
+
+    let to_splice = args.pop_back().ok_or(syntax_err("no args to apply"))?;
+    let to_splice = core::to_vector(to_splice)?;
+    args.append(to_splice);
+
+    eval::call_function_object(env, func, args, false)
 }
 
 fn set_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
@@ -178,16 +182,8 @@ fn macroexpand_1(env: &mut Env, form: LispObject) -> error::GenResult<LispObject
     let macro_fn = eval::lookup_symbol_macro(env, &macro_fn).ok_or(not_a_macro())?;
 
     arg_form.pop_front();
-    arg_form.push_front(LispObject::Macro(macro_fn.clone()));
 
-    match macro_fn {
-        core::Function::InterpretedFunction(_) => {
-            eval::call_interpreted_fn(env, LispObject::Vector(arg_form), true)
-        }
-        core::Function::NativeFunction(core::NativeFnWrapper(f)) => {
-            f(env, LispObject::Vector(arg_form))
-        }
-    }
+    eval::call_function_object(env, macro_fn, arg_form, false)
 }
 
 fn raise_error(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
@@ -195,6 +191,15 @@ fn raise_error(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject>
     let arg_form = nth(form, 1).ok_or(syntax_err("no arg in error"))?;
     let arg = core::to_string(arg_form)?;
     Err(Box::new(error::GenericError::new(arg)))
+}
+
+fn dbg(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+    let form = core::to_vector(form)?;
+    let arg_form = nth(form, 1).ok_or(syntax_err("no arg in dbg"))?;
+    print!("{} = ", &arg_form);
+    let evaled = eval(env, arg_form)?;
+    println!("{}", &evaled);
+    Ok(evaled)
 }
 
 pub fn prepare_specials(env: &mut core::Env) {
@@ -208,9 +213,10 @@ pub fn prepare_specials(env: &mut core::Env) {
     set("let", let_form);
     set("set-fn", set_fn);
     set("set-macro-fn", set_macro_fn);
-    set("funcall", funcall);
+    set("apply", apply);
     set("lambda", lambda_form);
     set("quote", quote_form);
     set("macroexpand-1", macroexpand_1);
     set("error", raise_error);
+    set("dbg", dbg);
 }

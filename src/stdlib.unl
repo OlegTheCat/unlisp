@@ -1,4 +1,9 @@
 (set-fn
+ funcall
+ (lambda (f & args)
+   (apply f args)))
+
+(set-fn
  append
  (lambda (x y)
    (if (emptyp x)
