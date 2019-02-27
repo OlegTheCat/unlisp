@@ -1,9 +1,9 @@
-use std::io::Result;
 use std::io::Read;
+use std::io::Result;
 
 pub struct PushbackReader<'a, T: Read + 'a> {
     reader: &'a mut T,
-    buffer: Vec<u8>
+    buffer: Vec<u8>,
 }
 
 impl<'a, T: Read + 'a> Read for PushbackReader<'a, T> {
@@ -16,10 +16,9 @@ impl<'a, T: Read + 'a> Read for PushbackReader<'a, T> {
             dest[0..buf_size].copy_from_slice(self.buffer.as_slice());
             self.buffer.clear();
             let read_from_reader = self.reader.read(&mut dest[buf_size..])?;
-            return Ok(read_from_reader + buf_size)
+            return Ok(read_from_reader + buf_size);
         } else {
-            let buf_part_iter =
-                self.buffer.drain(buf_size - dest_size..buf_size).rev();
+            let buf_part_iter = self.buffer.drain(buf_size - dest_size..buf_size).rev();
             dest.copy_from_slice(buf_part_iter.collect::<Vec<u8>>().as_slice());
             Ok(dest_size)
         }
@@ -28,9 +27,9 @@ impl<'a, T: Read + 'a> Read for PushbackReader<'a, T> {
 
 impl<'a, T: Read + 'a> PushbackReader<'a, T> {
     pub fn create(r: &'a mut T) -> PushbackReader<'a, T> {
-        PushbackReader{
+        PushbackReader {
             reader: r,
-            buffer: Vec::new()
+            buffer: Vec::new(),
         }
     }
 
@@ -45,7 +44,6 @@ impl<'a, T: Read + 'a> PushbackReader<'a, T> {
         self.unread(&[b]);
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -117,6 +115,5 @@ mod tests {
         let mut buf: [u8; 3] = [0; 3];
         assert_eq!(pbr.read(&mut buf).unwrap(), 3);
         assert_eq!(buf, [1, 2, 3]);
-
     }
 }

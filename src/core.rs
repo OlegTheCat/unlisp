@@ -1,27 +1,29 @@
-use im::Vector;
-use im::HashMap;
-use std::hash::Hasher;
-use std::hash::Hash;
-use std::fmt;
 use error;
+use im::HashMap;
+use im::Vector;
+use std::fmt;
+use std::hash::Hash;
+use std::hash::Hasher;
 
 macro_rules! define_unwrapper {
     ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
         pub fn $id(arg: $enum) -> Result<$to, error::CastError> {
             match arg {
                 $enum::$from(x) => Ok(x),
-                x => Err(error::CastError::new(format!("{}", x).to_string(),
-                                               stringify!($to).to_string()))
+                x => Err(error::CastError::new(
+                    format!("{}", x).to_string(),
+                    stringify!($to).to_string(),
+                )),
             }
         }
-    }
+    };
 }
 
 #[derive(Debug, Clone)]
 pub struct EnvFrame {
     pub sym_env: HashMap<Symbol, LispObject>,
     pub fn_env: HashMap<Symbol, Function>,
-    pub macro_env: HashMap<Symbol, Function>
+    pub macro_env: HashMap<Symbol, Function>,
 }
 
 impl EnvFrame {
@@ -29,10 +31,9 @@ impl EnvFrame {
         EnvFrame {
             sym_env: HashMap::new(),
             fn_env: HashMap::new(),
-            macro_env: HashMap::new()
+            macro_env: HashMap::new(),
         }
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -40,7 +41,7 @@ pub struct GlobalEnvFrame {
     pub sym_env: HashMap<Symbol, LispObject>,
     pub fn_env: HashMap<Symbol, Function>,
     pub macro_env: HashMap<Symbol, Function>,
-    pub special_env: HashMap<Symbol, NativeFnWrapper>
+    pub special_env: HashMap<Symbol, NativeFnWrapper>,
 }
 
 impl GlobalEnvFrame {
@@ -49,27 +50,26 @@ impl GlobalEnvFrame {
             sym_env: HashMap::new(),
             fn_env: HashMap::new(),
             special_env: HashMap::new(),
-            macro_env: HashMap::new()
+            macro_env: HashMap::new(),
         }
     }
-
 }
 
 #[derive(Debug, Clone)]
 pub struct Env {
     pub global_env: GlobalEnvFrame,
-    pub envs: Vector<EnvFrame>
+    pub envs: Vector<EnvFrame>,
 }
 
 impl Env {
     pub fn new() -> Env {
         Env {
             global_env: GlobalEnvFrame::new(),
-            envs: Vector::new()
+            envs: Vector::new(),
         }
     }
 
-    pub fn push_frame(&mut self, frame: EnvFrame)  {
+    pub fn push_frame(&mut self, frame: EnvFrame) {
         self.envs.push_front(frame);
     }
 
@@ -79,20 +79,19 @@ impl Env {
 }
 
 #[derive(Clone)]
-pub struct NativeFnWrapper(pub fn(&mut Env, LispObject)
-                                  -> error::GenResult<LispObject>);
+pub struct NativeFnWrapper(pub fn(&mut Env, LispObject) -> error::GenResult<LispObject>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct InterpretedFn {
     pub restarg: Option<Symbol>,
     pub arglist: Vector<Symbol>,
-    pub body: Vector<LispObject>
+    pub body: Vector<LispObject>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Function {
     InterpretedFunction(InterpretedFn),
-    NativeFunction(NativeFnWrapper)
+    NativeFunction(NativeFnWrapper),
 }
 
 define_unwrapper!(to_interpreted_function(Function::InterpretedFunction) -> InterpretedFn);
@@ -105,7 +104,10 @@ impl fmt::Debug for NativeFnWrapper {
 }
 
 impl Hash for NativeFnWrapper {
-    fn hash<H>(&self, state: &mut H) where H: Hasher {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
         state.write_usize(self.0 as usize);
     }
 }
@@ -116,8 +118,8 @@ impl PartialEq for NativeFnWrapper {
     }
 }
 
-impl Eq for NativeFnWrapper { }
-impl Copy for NativeFnWrapper { }
+impl Eq for NativeFnWrapper {}
+impl Copy for NativeFnWrapper {}
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Symbol(pub String);
@@ -132,7 +134,7 @@ pub enum LispObject {
     Vector(Vector<LispObject>),
     Fn(Function),
     Macro(Function),
-    Special(NativeFnWrapper)
+    Special(NativeFnWrapper),
 }
 
 define_unwrapper!(to_symbol(LispObject :: Symbol) -> Symbol);

@@ -10,23 +10,22 @@ pub enum Token {
     IntegerLiteral(i64),
     StringLiteral(String),
     Symbol(String),
-    Unexpected
+    Unexpected,
 }
 
 pub struct Lexer<'a, T: Read + 'a> {
-    pbr: PushbackReader<'a, T>
+    pbr: PushbackReader<'a, T>,
 }
 
 fn valid_symbol_char(c: char) -> bool {
-    c.is_alphanumeric()
-        || c == '&'
-        || c == '*'
-        || c == '-'
+    c.is_alphanumeric() || c == '&' || c == '*' || c == '-'
 }
 
 impl<'a, T: Read> Lexer<'a, T> {
     pub fn create(r: &'a mut T) -> Lexer<'a, T> {
-        Lexer{ pbr: PushbackReader::create(r) }
+        Lexer {
+            pbr: PushbackReader::create(r),
+        }
     }
 
     fn next_char(&mut self) -> io::Result<Option<char>> {
@@ -34,7 +33,7 @@ impl<'a, T: Read> Lexer<'a, T> {
         match self.pbr.read_exact(&mut one_byte) {
             Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => Ok(None),
             Err(e) => Err(e),
-            Ok(_) => Ok(Some(one_byte[0] as char))
+            Ok(_) => Ok(Some(one_byte[0] as char)),
         }
     }
 
@@ -47,8 +46,10 @@ impl<'a, T: Read> Lexer<'a, T> {
         loop {
             let c = self.next_char()?;
             if c.is_none() {
-                return Err(io::Error::new(io::ErrorKind::UnexpectedEof,
-                                          "eof while reading string literal"))
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "eof while reading string literal",
+                ));
             }
 
             // TODO: handle escaping
@@ -83,7 +84,6 @@ impl<'a, T: Read> Lexer<'a, T> {
         Ok(s.parse::<i64>().unwrap())
     }
 
-
     fn read_symbol(&mut self) -> io::Result<String> {
         let mut buf = Vec::new();
         loop {
@@ -107,7 +107,7 @@ impl<'a, T: Read> Lexer<'a, T> {
     pub fn next_token(&mut self) -> io::Result<Option<Token>> {
         let c = self.next_char()?;
         if c.is_none() {
-            return Ok(None)
+            return Ok(None);
         }
 
         let c = c.unwrap();
@@ -123,15 +123,15 @@ impl<'a, T: Read> Lexer<'a, T> {
             c if c.is_numeric() => {
                 self.unread_char(c);
                 Token::IntegerLiteral(self.read_integer_literal()?)
-            },
+            }
 
             c if valid_symbol_char(c) => {
                 self.unread_char(c);
                 Token::Symbol(self.read_symbol()?)
-            },
+            }
 
             '"' => Token::StringLiteral(self.read_string_literal()?),
-            _ => Token::Unexpected
+            _ => Token::Unexpected,
         };
 
         Ok(Some(tok))

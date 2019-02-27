@@ -1,10 +1,9 @@
-use std::fmt;
 use core;
 use core::LispObject;
 use im::Vector;
+use std::fmt;
 
-fn write_vector(f: &mut fmt::Formatter, vec: &Vector<LispObject>)
-                -> Result<(), fmt::Error> {
+fn write_vector(f: &mut fmt::Formatter, vec: &Vector<LispObject>) -> Result<(), fmt::Error> {
     let mut first = true;
 
     write!(f, "(")?;
@@ -23,8 +22,7 @@ impl fmt::Display for core::Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             core::Function::NativeFunction(_) => write!(f, "#<NATIVE-FN"),
-            core::Function::InterpretedFunction(_) =>
-                write!(f, "#<INTERPRETED-FN>")
+            core::Function::InterpretedFunction(_) => write!(f, "#<INTERPRETED-FN>"),
         }
     }
 }
@@ -46,7 +44,7 @@ impl fmt::Display for core::LispObject {
             LispObject::Macro(func) => write!(f, "{}+MACRO", func),
             LispObject::Special(_) => Err(fmt::Error),
             LispObject::Symbol(s) => write!(f, "{}", s),
-            LispObject::Vector(vec) => write_vector(f, vec)
+            LispObject::Vector(vec) => write_vector(f, vec),
         }
     }
 }

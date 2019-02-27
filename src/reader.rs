@@ -1,26 +1,28 @@
-use std::io;
-use std::io::Read;
 use core::LispObject;
 use core::Symbol;
+use std::io;
+use std::io::Read;
 
-use super::lexer::Token;
 use super::lexer::Lexer;
+use super::lexer::Token;
 use im::Vector;
 
 pub struct Reader<'a, T: Read + 'a> {
-    lexer: Lexer<'a, T>
+    lexer: Lexer<'a, T>,
 }
 
-impl <'a, T: Read + 'a> Reader<'a, T> {
+impl<'a, T: Read + 'a> Reader<'a, T> {
     pub fn create(r: &'a mut T) -> Reader<'a, T> {
         Reader {
-            lexer: Lexer::create(r)
+            lexer: Lexer::create(r),
         }
     }
 
     fn eof(&self) -> io::Result<Token> {
-        Err(io::Error::new(io::ErrorKind::UnexpectedEof,
-                           "eof while retrieving token"))
+        Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "eof while retrieving token",
+        ))
     }
 
     fn read_tok_or_eof(&mut self) -> io::Result<Token> {
@@ -40,7 +42,7 @@ impl <'a, T: Read + 'a> Reader<'a, T> {
             Token::Symbol(s) => Some(LispObject::Symbol(Symbol(s.to_string()))),
             Token::IntegerLiteral(i) => Some(LispObject::Integer(*i)),
             Token::StringLiteral(s) => Some(LispObject::String(s.to_string())),
-            _ => None
+            _ => None,
         }
     }
 
@@ -50,7 +52,6 @@ impl <'a, T: Read + 'a> Reader<'a, T> {
         let mut tok = self.read_tok_or_eof()?;
 
         while tok != Token::RightPar {
-
             let form;
 
             if let Some(t_form) = self.tok_to_trivial_form(&tok) {
@@ -59,7 +60,7 @@ impl <'a, T: Read + 'a> Reader<'a, T> {
                 form = match tok {
                     Token::LeftPar => self.read_list_form()?,
                     Token::RightPar => break,
-                    _ => panic!("Unexpected token")
+                    _ => panic!("Unexpected token"),
                 }
             }
 
@@ -79,8 +80,8 @@ impl <'a, T: Read + 'a> Reader<'a, T> {
             None => match tok {
                 Token::LeftPar => self.read_list_form()?,
                 Token::RightPar => panic!("unbalanced pars"),
-                _ => panic!("Unexpected token")
-            }
+                _ => panic!("Unexpected token"),
+            },
         };
 
         Ok(form)

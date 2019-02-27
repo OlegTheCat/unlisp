@@ -8,7 +8,7 @@ pub type GenResult<T> = Result<T, GenError>;
 pub struct CastError {
     message: String,
     from: String,
-    to: String
+    to: String,
 }
 
 impl CastError {
@@ -16,11 +16,10 @@ impl CastError {
         CastError {
             message: format!("cannot cast {} to {}", &from, &to),
             from: from,
-            to: to
+            to: to,
         }
     }
 }
-
 
 impl fmt::Display for CastError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -39,14 +38,16 @@ pub struct ArityError {
     message: String,
     actual_args_count: usize,
     expected_args_count: usize,
-    fn_name: String
+    fn_name: String,
 }
 
 impl ArityError {
     pub fn new(expected: usize, actual: usize, fn_name: String) -> ArityError {
         ArityError {
-            message: format!("wrong number of arguments ({}) passed to {}",
-                             actual, &fn_name),
+            message: format!(
+                "wrong number of arguments ({}) passed to {}",
+                actual, &fn_name
+            ),
             actual_args_count: actual,
             expected_args_count: expected,
             fn_name: fn_name,
@@ -68,14 +69,12 @@ impl std::error::Error for ArityError {
 
 #[derive(Debug, Clone)]
 pub struct SyntaxError {
-    message: String
+    message: String,
 }
 
 impl SyntaxError {
     pub fn new(message: String) -> SyntaxError {
-        SyntaxError {
-            message: message
-        }
+        SyntaxError { message: message }
     }
 }
 
@@ -95,17 +94,19 @@ impl std::error::Error for SyntaxError {
 pub struct UndefinedSymbol {
     message: String,
     symbol_name: String,
-    is_fn: bool
+    is_fn: bool,
 }
 
 impl UndefinedSymbol {
     pub fn new(symbol_name: String, is_fn: bool) -> UndefinedSymbol {
         UndefinedSymbol {
-            message: format!("undefined {} {}",
-                             if is_fn { "function" } else { "symbol" },
-                             &symbol_name),
+            message: format!(
+                "undefined {} {}",
+                if is_fn { "function" } else { "symbol" },
+                &symbol_name
+            ),
             symbol_name: symbol_name,
-            is_fn: is_fn
+            is_fn: is_fn,
         }
     }
 }
@@ -124,14 +125,12 @@ impl std::error::Error for UndefinedSymbol {
 
 #[derive(Debug, Clone)]
 pub struct GenericError {
-    message: String
+    message: String,
 }
 
 impl GenericError {
     pub fn new(message: String) -> GenericError {
-        GenericError {
-            message: message
-        }
+        GenericError { message: message }
     }
 }
 

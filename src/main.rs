@@ -1,21 +1,22 @@
 use std::io;
 // use std::io::BufRead;
+use std::fs;
 use std::io::Write;
 use std::thread;
-use std::fs;
 
 extern crate im;
 extern crate scopeguard;
 
-mod pushback_reader;
-mod lexer;
-mod core;
 mod native_fn_helpers;
-mod reader;
+mod core;
 mod error;
+mod lexer;
+mod pushback_reader;
+mod reader;
+mod special;
 mod eval;
 mod print;
-mod special;
+
 
 fn eval_stdlib(env: &mut core::Env) {
     let mut file = fs::File::open("src/stdlib.unl").expect("stdlib file not found");
@@ -25,11 +26,10 @@ fn eval_stdlib(env: &mut core::Env) {
         match reader.read_form() {
             Ok(form) => {
                 eval::eval(env, form).expect("error during stdlib eval");
-            },
-            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof =>
-                break,
+            }
+            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
 
-            Err(ref e) => panic!("Unexpected error during stdlib eval: {}", e)
+            Err(ref e) => panic!("Unexpected error during stdlib eval: {}", e),
         }
     }
 }
@@ -49,17 +49,14 @@ fn repl() {
 
     loop {
         match reader.read_form() {
-            Ok(form) => {
-                match eval::eval(&mut env, form) {
-                    Ok(lo) => {
-                        println!("{}", lo);
-                    },
-                    Err(e) => println!("error: {}", e)
+            Ok(form) => match eval::eval(&mut env, form) {
+                Ok(lo) => {
+                    println!("{}", lo);
                 }
+                Err(e) => println!("error: {}", e),
             },
-            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof =>
-                println!("EOF error"),
-            Err(ref e) => println!("Unexpected error: {}", e)
+            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => println!("EOF error"),
+            Err(ref e) => println!("Unexpected error: {}", e),
         }
 
         print!(">>> ");
