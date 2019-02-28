@@ -7,13 +7,13 @@ use std::thread;
 extern crate im;
 extern crate scopeguard;
 
-mod native_fn_helpers;
 mod core;
 mod error;
 mod lexer;
 mod pushback_reader;
 mod reader;
 mod special;
+mod native;
 mod eval;
 mod print;
 
@@ -42,7 +42,7 @@ fn repl() {
 
     let mut env = core::Env::new();
     special::prepare_specials(&mut env);
-    eval::prepare_native_stdlib(&mut env);
+    native::prepare_native_stdlib(&mut env);
     eval_stdlib(&mut env);
 
     let mut reader = reader::Reader::create(&mut stdin);
