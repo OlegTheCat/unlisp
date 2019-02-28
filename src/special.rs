@@ -202,6 +202,19 @@ fn dbg(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     Ok(evaled)
 }
 
+fn symbol_function(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
+    let form = core::to_vector(form)?;
+    let arg = nth(form, 1).ok_or(syntax_err("no arg in symbol-function"))?;
+    let arg = core::to_symbol(arg)?;
+    let f = eval::lookup_symbol_fn(env, &arg).ok_or(error::UndefinedSymbol::new(
+        arg.0.to_string(),
+        true,
+    ))?;
+
+
+    Ok(LispObject::Fn(f))
+}
+
 pub fn prepare_specials(env: &mut core::Env) {
     let mut set = |s: &str, f| {
         env.global_env
@@ -219,4 +232,5 @@ pub fn prepare_specials(env: &mut core::Env) {
     set("macroexpand-1", macroexpand_1);
     set("error", raise_error);
     set("dbg", dbg);
+    set("symbol-function", symbol_function);
 }

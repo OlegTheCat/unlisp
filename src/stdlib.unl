@@ -123,3 +123,38 @@
          (unq val)))))
    (qquote (let () (unqs body)))
    (reverse bindings)))
+
+(defmacro symf (sym)
+  (qquote
+   (symbol-function (unq sym))))
+
+(defun mapcar (f & lists)
+  (let ((multicar (lambda (lists)
+                    (if (emptyp lists)
+                        (list () ())
+                        (let ((lst (first lists)))
+                          (if (emptyp lst)
+                              (list () ())
+                              (let ((head (first lst))
+                                    (tail (rest lst))
+                                    (multicars (funcall multicar (rest lists))))
+                                (list (cons head (first multicars))
+                                      (cons tail (first (rest multicars))))))))))
+        (mc (funcall multicar lists))
+        (heads (first mc))
+        (tails (first (rest mc))))
+    (if (emptyp heads)
+        ()
+        (cons (apply f heads)
+              (apply (symf mapcar) f tails)))))
+
+(defmacro cond (& clauses)
+  (reduce
+   (lambda (acc clause)
+     (qquote
+      (if (unq (first clause))
+          (let ()
+            (unqs (rest clause)))
+          (unq acc))))
+   (quote nil)
+   (reverse clauses)))

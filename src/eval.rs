@@ -166,7 +166,7 @@ fn lookup_symbol_value(env: &mut Env, s: &Symbol) -> Option<LispObject> {
     env.global_env.sym_env.get(s).map(|v| v.clone())
 }
 
-fn lookup_symbol_fn(env: &mut Env, s: &Symbol) -> Option<core::Function> {
+pub fn lookup_symbol_fn(env: &mut Env, s: &Symbol) -> Option<core::Function> {
     for frame in &env.envs {
         if let Some(val) = frame.fn_env.get(s) {
             return Some(val.clone());
