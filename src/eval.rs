@@ -313,12 +313,7 @@ pub fn eval(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
             LispObject::Macro(_) => call_macro(env, form.clone()),
             LispObject::Special(core::NativeFnWrapper(f)) => f(env, form.clone()),
 
-            head => {
-                let head_val = eval(env, head)?;
-                let mut new_form = vec.clone().slice(1..);
-                new_form.push_front(head_val);
-                eval(env, LispObject::Vector(new_form))
-            }
+            _=> Err(Box::new(syntax_err("illegal function call")))
         },
     }
 }
