@@ -187,3 +187,16 @@
    (if (unq c)
        (let ()
          (unqs body)))))
+
+(defmacro dbg (& forms)
+  (qquote
+   (let ()
+     (unqs
+      (mapcar
+       (lambda (form)
+         (qquote
+          (let ()
+            (print (quote (unq form)))
+            (stdout-write " = ")
+            (println (unq form)))))
+       forms)))))
