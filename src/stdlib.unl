@@ -139,26 +139,6 @@
   (qquote
    (symbol-function (unq sym))))
 
-(defun mapcar (f & lists)
-  (let ((multicar (lambda (lists)
-                    (if (emptyp lists)
-                        (list () ())
-                        (let ((lst (first lists)))
-                          (if (emptyp lst)
-                              (list () ())
-                              (let ((head (first lst))
-                                    (tail (rest lst))
-                                    (multicars (funcall multicar (rest lists))))
-                                (list (cons head (first multicars))
-                                      (cons tail (first (rest multicars))))))))))
-        (mc (funcall multicar lists))
-        (heads (first mc))
-        (tails (first (rest mc))))
-    (if (emptyp heads)
-        ()
-        (cons (apply f heads)
-              (apply (symf mapcar) f tails)))))
-
 (defmacro cond (& clauses)
   (reduce
    (lambda (acc clause)
@@ -198,6 +178,39 @@
    (if (unq c)
        (let ()
          (unqs body)))))
+
+(defun second (list)
+  (first (rest list)))
+
+(defmacro if-let (binding then else)
+  (qquote
+   (let ((unq binding))
+     (if (unq (first binding))
+         (unq then)
+         (unq else)))))
+
+(defmacro when-let (binding & body)
+  (qquote
+   (if-let (unq binding)
+           (let ()
+             (unqs body))
+           nil)))
+
+(defun mapcar (f xs & ys)
+  (if-let (split (reduce
+                    (lambda (acc list)
+                      (if (or (emptyp list)
+                              (not acc))
+                          nil
+                          (list (cons (first list) (first acc))
+                                (cons (rest list) (second acc)))))
+                    (list () ())
+                    (reverse (cons xs ys))))
+          (let ((heads (first split))
+                (tails (second split)))
+            (cons (apply f heads)
+                  (apply (symf mapcar) f tails)))
+          ()))
 
 (defmacro dbgp (str-prefix & forms)
   (qquote
