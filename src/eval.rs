@@ -49,26 +49,8 @@ define_native_fn! {
 }
 
 define_native_fn! {
-    native_list(_env, ... args: core::identity_converter) -> LispObject::Vector {
-        args
-    }
-}
-
-define_native_fn! {
     native_cons(_env, item: core::identity_converter, list: core::to_vector) -> LispObject::Vector {
         list.push_front(item);
-        list
-    }
-}
-
-define_native_fn! {
-    native_list_star(_env, ... args: core::identity_converter) -> LispObject::Vector {
-        let len = args.len();
-        let mut list = core::to_vector(args.remove(len - 1))?;
-        for arg in args.into_iter().rev() {
-            list.push_front(arg);
-        }
-
         list
     }
 }
@@ -131,12 +113,10 @@ fn fill_stdlib(frame: &mut core::GlobalEnvFrame) {
     };
 
     set("add", native_add);
-    set("list", native_list);
-    set("cons", native_cons);
     set("sub", native_sub);
     set("mul", native_mul);
     set("equal", native_equal);
-    set("list*", native_list_star);
+    set("cons", native_cons);
     set("first", native_first);
     set("rest", native_rest);
     set("listp", native_listp);

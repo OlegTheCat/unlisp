@@ -1,4 +1,18 @@
 (set-fn
+ list
+ (lambda (& args)
+   args))
+
+(set-fn
+ list*
+ (lambda (& args)
+   (if (emptyp (rest args))
+       (first args)
+       (cons (first args)
+             (apply (symbol-function list*)
+                    (rest args))))))
+
+(set-fn
  funcall
  (lambda (f & args)
    (apply f args)))
