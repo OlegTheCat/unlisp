@@ -188,7 +188,7 @@
        (let ()
          (unqs body)))))
 
-(defmacro dbg (& forms)
+(defmacro dbgp (str-prefix & forms)
   (qquote
    (let ()
      (unqs
@@ -196,7 +196,13 @@
        (lambda (form)
          (qquote
           (let ()
+            (when (unq str-prefix)
+              (stdout-write (unq str-prefix))
+              (stdout-write " "))
             (print (quote (unq form)))
             (stdout-write " = ")
             (println (unq form)))))
        forms)))))
+
+(defmacro dbg (& forms)
+  (qquote (dbgp nil (unqs forms))))
