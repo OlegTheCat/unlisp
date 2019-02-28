@@ -9,7 +9,6 @@ use eval::eval;
 use im::Vector;
 use scopeguard::guard;
 use std::ops::DerefMut;
-use std::io::Write;
 
 fn nth(vec: Vector<LispObject>, i: usize) -> Option<LispObject> {
     vec.into_iter().nth(i)
@@ -116,20 +115,6 @@ fn lambda_form(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject>
     )))
 }
 
-fn apply(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-    let func = nth(form.clone(), 1).unwrap();
-    let func = core::to_function(eval(env, func)?)?;
-
-    let mut args = form.clone().slice(2..).into_iter().map(|lo| eval(env, lo)).collect::<error::GenResult<Vector<_>>>()?;
-
-    let to_splice = args.pop_back().ok_or(syntax_err("no args to apply"))?;
-    let to_splice = core::to_vector(to_splice)?;
-    args.append(to_splice);
-
-    eval::call_function_object(env, func, args, false)
-}
-
 fn set_fn(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let form = core::to_vector(form)?;
 
@@ -194,30 +179,6 @@ fn raise_error(_env: &mut Env, form: LispObject) -> error::GenResult<LispObject>
     Err(Box::new(error::GenericError::new(arg)))
 }
 
-fn do_print(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-    let arg_form = nth(form, 1).ok_or(syntax_err("no arg in print"))?;
-    let evaled = eval(env, arg_form)?;
-    print!("{}", &evaled);
-    Ok(evaled)
-}
-
-fn do_println(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let res = do_print(env, form)?;
-    println!("");
-    Ok(res)
-}
-
-fn write_string_to_stdout(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-    let format_str = nth(form.clone(), 1).ok_or(syntax_err("no arg in stdout-write"))?;
-    let format_str = core::to_string(eval(env, format_str)?)
-        .map_err(|_| syntax_err("not a string in stdout-write"))?;
-
-    write!(std::io::stdout(), "{}", format_str)?;
-    Ok(LispObject::Nil)
-}
-
 fn symbol_function(env: &mut Env, form: LispObject) -> error::GenResult<LispObject> {
     let form = core::to_vector(form)?;
     let arg = nth(form, 1).ok_or(syntax_err("no arg in symbol-function"))?;
@@ -242,13 +203,9 @@ pub fn prepare_specials(env: &mut core::Env) {
     set("let", let_form);
     set("set-fn", set_fn);
     set("set-macro-fn", set_macro_fn);
-    set("apply", apply);
     set("lambda", lambda_form);
     set("quote", quote_form);
     set("macroexpand-1", macroexpand_1);
     set("error", raise_error);
-    set("println", do_println);
-    set("print", do_print);
-    set("stdout-write", write_string_to_stdout);
     set("symbol-function", symbol_function);
 }

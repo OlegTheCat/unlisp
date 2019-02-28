@@ -7,6 +7,42 @@ use error;
 use im::Vector;
 use scopeguard::guard;
 use std::ops::DerefMut;
+use std::io::Write;
+
+define_native_fn! {
+    native_stdout_write(_env, s: core::to_string) -> core::identity {
+        write!(std::io::stdout(), "{}", s)?;
+        LispObject::Nil
+    }
+}
+
+define_native_fn! {
+    native_print(_env, x: core::identity_converter) -> core::identity {
+        print!("{}", &x);
+        x
+    }
+}
+
+define_native_fn! {
+    native_println(_env, x: core::identity_converter) -> core::identity {
+        println!("{}", &x);
+        x
+    }
+}
+
+define_native_fn! {
+    native_apply(env, f: core::to_function, ... args: core::identity_converter) -> core::identity {
+        let last_arg =
+            core::to_vector(args.pop_back()
+                            .ok_or(error::ArityError::new(
+                                2,
+                                1,
+                                "apply".to_string()
+        ))?)?;
+        args.append(last_arg);
+        call_function_object(env, f, args, false)?
+    }
+}
 
 define_native_fn! {
     native_add(_env, ... args: core::to_i64) -> LispObject::Integer {
@@ -112,6 +148,7 @@ fn fill_stdlib(frame: &mut core::GlobalEnvFrame) {
         );
     };
 
+    set("apply", native_apply);
     set("add", native_add);
     set("sub", native_sub);
     set("mul", native_mul);
@@ -122,6 +159,9 @@ fn fill_stdlib(frame: &mut core::GlobalEnvFrame) {
     set("listp", native_listp);
     set("emptyp", native_emptyp);
     set("symbolp", native_symbolp);
+    set("print", native_print);
+    set("println", native_println);
+    set("stdout-write", native_stdout_write);
 }
 
 pub fn prepare_native_stdlib(env: &mut Env) {
