@@ -181,3 +181,9 @@
           (if eform eform (unq acc)))))
      (first reversed)
      (rest reversed))))
+
+(defmacro when (c & body)
+  (qquote
+   (if (unq c)
+       (let ()
+         (unqs body)))))
