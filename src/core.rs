@@ -138,11 +138,3 @@ define_unwrapper!(to_vector(LispObject :: Vector) -> Vector<LispObject>);
 define_unwrapper!(to_function(LispObject :: Fn) -> Function);
 define_unwrapper!(to_special(LispObject :: Special) -> NativeFnWrapper);
 define_unwrapper!(to_macro(LispObject :: Macro) -> Function);
-
-pub fn identity_converter(v: LispObject) -> error::GenResult<LispObject> {
-    Ok(v)
-}
-
-pub fn identity(v: LispObject) -> LispObject {
-    v
-}

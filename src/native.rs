@@ -6,6 +6,14 @@ use im::Vector;
 use std::io::Write;
 use eval;
 
+fn identity_converter(v: LispObject) -> error::GenResult<LispObject> {
+    Ok(v)
+}
+
+fn identity(v: LispObject) -> LispObject {
+    v
+}
+
 macro_rules! define_native_fn {
     ($id:ident ($env:ident, $( $arg:ident : $converter:path ),*) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
@@ -72,28 +80,28 @@ fn native_bool_to_lisp_bool(b: bool) -> LispObject {
 }
 
 define_native_fn! {
-    native_stdout_write(_env, s: core::to_string) -> core::identity {
+    native_stdout_write(_env, s: core::to_string) -> identity {
         write!(std::io::stdout(), "{}", s)?;
         LispObject::Nil
     }
 }
 
 define_native_fn! {
-    native_print(_env, x: core::identity_converter) -> core::identity {
+    native_print(_env, x: identity_converter) -> identity {
         print!("{}", &x);
         x
     }
 }
 
 define_native_fn! {
-    native_println(_env, x: core::identity_converter) -> core::identity {
+    native_println(_env, x: identity_converter) -> identity {
         println!("{}", &x);
         x
     }
 }
 
 define_native_fn! {
-    native_apply(env, f: core::to_function, ... args: core::identity_converter) -> core::identity {
+    native_apply(env, f: core::to_function, ... args: identity_converter) -> identity {
         let last_arg =
             core::to_vector(args.pop_back()
                             .ok_or(error::ArityError::new(
@@ -137,20 +145,20 @@ define_native_fn! {
 }
 
 define_native_fn! {
-    native_equal(_env, x: core::identity_converter, y: core::identity_converter) -> core::identity {
+    native_equal(_env, x: identity_converter, y: identity_converter) -> identity {
         native_bool_to_lisp_bool(x == y)
     }
 }
 
 define_native_fn! {
-    native_cons(_env, item: core::identity_converter, list: core::to_vector) -> LispObject::Vector {
+    native_cons(_env, item: identity_converter, list: core::to_vector) -> LispObject::Vector {
         list.push_front(item);
         list
     }
 }
 
 define_native_fn! {
-    native_first(_env, list: core::to_vector) -> core::identity {
+    native_first(_env, list: core::to_vector) -> identity {
         let first = list.into_iter().next()
             .ok_or(
                 Box::new(
@@ -167,20 +175,20 @@ define_native_fn! {
 }
 
 define_native_fn! {
-    native_listp(_env, arg: core::identity_converter) -> core::identity {
+    native_listp(_env, arg: identity_converter) -> identity {
         let converted = core::to_vector(arg);
         native_bool_to_lisp_bool(converted.is_ok())
     }
 }
 
 define_native_fn! {
-    native_emptyp(_env, arg: core::to_vector) -> core::identity {
+    native_emptyp(_env, arg: core::to_vector) -> identity {
         native_bool_to_lisp_bool(arg.is_empty())
     }
 }
 
 define_native_fn! {
-    native_symbolp(_env, arg: core::identity_converter) -> core::identity {
+    native_symbolp(_env, arg: identity_converter) -> identity {
         let converted = core::to_symbol(arg);
         native_bool_to_lisp_bool(converted.is_ok())
     }
