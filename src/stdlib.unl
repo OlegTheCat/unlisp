@@ -158,3 +158,26 @@
           (unq acc))))
    (quote nil)
    (reverse clauses)))
+
+(defmacro and (& forms)
+  (let ((reversed (if (emptyp forms)
+                      (list t)
+                      (reverse forms))))
+    (reduce
+     (lambda (acc form)
+       (qquote
+        (if (unq form) (unq acc) nil)))
+     (first reversed)
+     (rest reversed))))
+
+(defmacro or (& forms)
+  (let ((reversed (if (emptyp forms)
+                      (list nil)
+                      (reverse forms))))
+    (reduce
+     (lambda (acc form)
+       (qquote
+        (let ((eform (unq form)))
+          (if eform eform (unq acc)))))
+     (first reversed)
+     (rest reversed))))
