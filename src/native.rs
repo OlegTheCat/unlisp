@@ -1,5 +1,4 @@
 use core;
-use core::Env;
 use core::LispObject;
 use core::Symbol;
 use error;
@@ -10,7 +9,7 @@ use eval;
 macro_rules! define_native_fn {
     ($id:ident ($env:ident, $( $arg:ident : $converter:path ),*) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: &mut core::Env, lo: LispObject ) -> error::GenResult<LispObject> {
+        fn $id( $env: core::Env, lo: LispObject ) -> error::GenResult<LispObject> {
             let mut form = core::to_vector(lo)?;
             let mut args = form.slice(1..);
 
@@ -34,7 +33,7 @@ macro_rules! define_native_fn {
 
     ($id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: &mut core::Env, lo: LispObject ) -> error::GenResult<LispObject> {
+        fn $id( $env: core::Env, lo: LispObject ) -> error::GenResult<LispObject> {
             let mut form = core::to_vector(lo)?;
             let mut args = form.slice(1..);
 
@@ -187,9 +186,9 @@ define_native_fn! {
     }
 }
 
-pub fn prepare_native_stdlib(env: &mut Env) {
+pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
     let mut set = |name: &str, f| {
-        env.global_env.fn_env.insert(
+        global_env.fn_env.insert(
             Symbol(name.to_string()),
             core::Function::NativeFunction(core::NativeFnWrapper(f)),
         );

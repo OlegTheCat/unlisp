@@ -3,6 +3,7 @@ use std::io;
 use std::fs;
 use std::io::Write;
 use std::thread;
+use std::ops::DerefMut;
 
 extern crate im;
 extern crate scopeguard;
@@ -18,14 +19,14 @@ mod eval;
 mod print;
 
 
-fn eval_stdlib(env: &mut core::Env) {
+fn eval_stdlib(env: &core::Env) {
     let mut file = fs::File::open("src/stdlib.unl").expect("stdlib file not found");
 
     let mut reader = reader::Reader::create(&mut file);
     loop {
         match reader.read_form() {
             Ok(form) => {
-                eval::eval(env, form).expect("error during stdlib eval");
+                eval::eval(env.clone(), form).expect("error during stdlib eval");
             }
             Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
 
@@ -40,16 +41,16 @@ fn repl() {
     print!(">>> ");
     io::stdout().flush().unwrap();
 
-    let mut env = core::Env::new();
-    special::prepare_specials(&mut env);
-    native::prepare_native_stdlib(&mut env);
-    eval_stdlib(&mut env);
+    let env = core::Env::new();
+    special::prepare_specials(env.global_env.as_ref().borrow_mut().deref_mut());
+    native::prepare_native_stdlib(env.global_env.as_ref().borrow_mut().deref_mut());
+    eval_stdlib(&env);
 
     let mut reader = reader::Reader::create(&mut stdin);
 
     loop {
         match reader.read_form() {
-            Ok(form) => match eval::eval(&mut env, form) {
+            Ok(form) => match eval::eval(env.clone(), form) {
                 Ok(lo) => {
                     println!("{}", lo);
                 }

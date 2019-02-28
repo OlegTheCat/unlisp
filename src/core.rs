@@ -4,6 +4,8 @@ use im::Vector;
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 macro_rules! define_unwrapper {
     ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
@@ -57,29 +59,21 @@ impl GlobalEnvFrame {
 
 #[derive(Debug, Clone)]
 pub struct Env {
-    pub global_env: GlobalEnvFrame,
-    pub envs: Vector<EnvFrame>,
+    pub global_env: Rc<RefCell<GlobalEnvFrame>>,
+    pub cur_env: EnvFrame
 }
 
 impl Env {
     pub fn new() -> Env {
         Env {
-            global_env: GlobalEnvFrame::new(),
-            envs: Vector::new(),
+            global_env: Rc::new(RefCell::new(GlobalEnvFrame::new())),
+            cur_env: EnvFrame::new()
         }
-    }
-
-    pub fn push_frame(&mut self, frame: EnvFrame) {
-        self.envs.push_front(frame);
-    }
-
-    pub fn pop_frame(&mut self) {
-        self.envs.pop_front();
     }
 }
 
 #[derive(Clone)]
-pub struct NativeFnWrapper(pub fn(&mut Env, LispObject) -> error::GenResult<LispObject>);
+pub struct NativeFnWrapper(pub fn(Env, LispObject) -> error::GenResult<LispObject>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct InterpretedFn {
