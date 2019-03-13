@@ -56,7 +56,7 @@ fn repl() {
                 }
                 Err(e) => println!("error: {}", e),
             },
-            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => println!("EOF error"),
+            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
             Err(ref e) => println!("Unexpected error: {}", e),
         }
 
