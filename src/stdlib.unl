@@ -196,6 +196,12 @@
              (unqs body))
            nil)))
 
+(defmacro if-it (cond then else)
+  (qquote
+   (if-let (it (unq cond))
+           (unq then)
+           (unq else))))
+
 (defun mapcar (f xs & ys)
   (if-let (split (reduce
                     (lambda (acc list)
@@ -230,3 +236,11 @@
 
 (defmacro dbg (& forms)
   (qquote (dbgp nil (unqs forms))))
+
+(defun range (to)
+  (let ((loop (lambda (to acc)
+                (if (equal to 0)
+                    (cons 0 acc)
+                    (funcall loop (sub to 1)
+                             (cons to acc))))))
+    (funcall loop to ())))
