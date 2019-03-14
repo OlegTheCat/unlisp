@@ -19,20 +19,22 @@ macro_rules! define_native_fn {
         #[allow(unused_mut)]
         fn $id( $env: core::Env, lo: &LispObject ) -> error::GenResult<LispObject> {
             let mut form = core::to_vector(lo)?;
-            let mut args = form.clone().slice(1..);
+            let args_count = form.len() - 1;
+
+            let mut args_iter = form.iter();
+            args_iter.next();
 
             let mut parameters_count = 0;
             $( stringify!($arg); parameters_count += 1; )*
 
-                if parameters_count != args.len() {
+                if parameters_count != args_count {
                     return Err(Box::new(
                         error::ArityError::new(parameters_count,
-                                               args.len(),
+                                               args_count,
                                                stringify!($id).to_string())));
                 }
 
-            let mut iter = args.iter();
-            $( let mut $arg = $converter(iter.next().unwrap())?; )*
+            $( let mut $arg = $converter(args_iter.next().unwrap())?; )*
 
             let res = $result_wrap($body);
             Ok(res)
@@ -110,17 +112,24 @@ define_native_fn! {
 
 define_native_fn! {
     native_apply(env, f: core::to_function, ... args: identity_converter) -> identity {
-        let mut args = args.into_iter().map(|lo| lo.clone()).collect::<Vector<LispObject>>();
-        let last_arg =
-            core::to_vector_owned(args.pop_back()
-                            .ok_or(error::ArityError::new(
-                                2,
-                                1,
-                                "apply".to_string()
-                            ))?)?;
 
-        args.append(last_arg);
-        eval::call_function_object(env, f, &args, false)?
+        // last one is to be spliced
+        let mut args_count = args.len() - 1;
+        let mut args_iter = args.into_iter();
+
+        let last_arg = {
+            let mut rev = args_iter.by_ref().rev();
+            core::to_vector(rev.next().ok_or(error::ArityError::new(
+                2,
+                1,
+                "apply".to_string()
+            ))?)?
+        };
+
+        args_count += last_arg.len();
+
+        let args_iter = args_iter.chain(last_arg);
+        eval::call_function_object(env, f, args_iter, args_count, false)?
     }
 }
 
