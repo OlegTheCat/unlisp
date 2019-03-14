@@ -6,8 +6,8 @@ use im::Vector;
 use std::io::Write;
 use eval;
 
-fn identity_converter(v: LispObject) -> error::GenResult<LispObject> {
-    Ok(v)
+fn identity_converter(v: &LispObject) -> error::GenResult<&LispObject> {
+    Ok(&v)
 }
 
 fn identity(v: LispObject) -> LispObject {
@@ -17,9 +17,9 @@ fn identity(v: LispObject) -> LispObject {
 macro_rules! define_native_fn {
     ($id:ident ($env:ident, $( $arg:ident : $converter:path ),*) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: core::Env, lo: LispObject ) -> error::GenResult<LispObject> {
+        fn $id( $env: core::Env, lo: &LispObject ) -> error::GenResult<LispObject> {
             let mut form = core::to_vector(lo)?;
-            let mut args = form.slice(1..);
+            let mut args = form.clone().slice(1..);
 
             let mut parameters_count = 0;
             $( stringify!($arg); parameters_count += 1; )*
@@ -31,7 +31,7 @@ macro_rules! define_native_fn {
                                                stringify!($id).to_string())));
                 }
 
-            let mut iter = args.into_iter();
+            let mut iter = args.iter();
             $( let mut $arg = $converter(iter.next().unwrap())?; )*
 
             let res = $result_wrap($body);
@@ -41,9 +41,9 @@ macro_rules! define_native_fn {
 
     ($id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: core::Env, lo: LispObject ) -> error::GenResult<LispObject> {
+        fn $id( $env: core::Env, lo: &LispObject ) -> error::GenResult<LispObject> {
             let mut form = core::to_vector(lo)?;
-            let mut args = form.slice(1..);
+            let mut args = form.clone().slice(1..);
 
             #[allow(unused_mut)]
             let mut non_vararg_parameters_count = 0;
@@ -57,7 +57,7 @@ macro_rules! define_native_fn {
                 }
 
             #[allow(unused_mut)]
-            let mut iter = args.into_iter();
+            let mut iter = args.iter();
 
             $( #[allow(unused_mut)] let mut $arg = $converter(iter.next().unwrap())?; )*
 
@@ -68,6 +68,14 @@ macro_rules! define_native_fn {
             let res = $result_wrap($body);
             Ok(res)
         }
+    }
+}
+
+define_native_fn! {
+    native_cons(_env, item: identity_converter, list: core::to_vector) -> LispObject::Vector {
+        let mut list = list.clone();
+        list.push_front(item.clone());
+        list
     }
 }
 
@@ -89,28 +97,30 @@ define_native_fn! {
 define_native_fn! {
     native_print(_env, x: identity_converter) -> identity {
         print!("{}", &x);
-        x
+        x.clone()
     }
 }
 
 define_native_fn! {
     native_println(_env, x: identity_converter) -> identity {
         println!("{}", &x);
-        x
+        x.clone()
     }
 }
 
 define_native_fn! {
     native_apply(env, f: core::to_function, ... args: identity_converter) -> identity {
+        let mut args = args.into_iter().map(|lo| lo.clone()).collect::<Vector<LispObject>>();
         let last_arg =
-            core::to_vector(args.pop_back()
+            core::to_vector_owned(args.pop_back()
                             .ok_or(error::ArityError::new(
                                 2,
                                 1,
                                 "apply".to_string()
-        ))?)?;
+                            ))?)?;
+
         args.append(last_arg);
-        eval::call_function_object(env, f, args, false)?
+        eval::call_function_object(env, f, &args, false)?
     }
 }
 
@@ -126,7 +136,7 @@ define_native_fn! {
 
 define_native_fn! {
     native_sub(_env, from: core::to_i64, ... args: core::to_i64) -> LispObject::Integer {
-        let mut res = from;
+        let mut res = *from;
         for arg in args {
             res -= arg
         }
@@ -136,7 +146,7 @@ define_native_fn! {
 
 define_native_fn! {
     native_mul(_env, from: core::to_i64, ... args: core::to_i64) -> LispObject::Integer {
-        let mut res = from;
+        let mut res = *from;
         for arg in args {
             res *= arg
         }
@@ -146,14 +156,7 @@ define_native_fn! {
 
 define_native_fn! {
     native_equal(_env, x: identity_converter, y: identity_converter) -> identity {
-        native_bool_to_lisp_bool(x == y)
-    }
-}
-
-define_native_fn! {
-    native_cons(_env, item: identity_converter, list: core::to_vector) -> LispObject::Vector {
-        list.push_front(item);
-        list
+        native_bool_to_lisp_bool(*x == *y)
     }
 }
 
@@ -164,13 +167,13 @@ define_native_fn! {
                 Box::new(
                     error::GenericError::new(
                         "cannot do first on empty list".to_string())))?;
-        first
+        first.clone()
     }
 }
 
 define_native_fn! {
     native_rest(_env, list: core::to_vector) -> LispObject::Vector {
-        list.slice(1..)
+        list.clone().slice(1..)
     }
 }
 
@@ -202,12 +205,13 @@ pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
         );
     };
 
+
+    set("cons", native_cons);
     set("apply", native_apply);
     set("add", native_add);
     set("sub", native_sub);
     set("mul", native_mul);
     set("equal", native_equal);
-    set("cons", native_cons);
     set("first", native_first);
     set("rest", native_rest);
     set("listp", native_listp);

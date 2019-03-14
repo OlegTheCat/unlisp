@@ -205,8 +205,7 @@
 (defun mapcar (f xs & ys)
   (if-let (split (reduce
                     (lambda (acc list)
-                      (if (or (emptyp list)
-                              (not acc))
+                      (if (if (emptyp list) t (if (not acc) t nil))
                           nil
                           (list (cons (first list) (first acc))
                                 (cons (rest list) (second acc)))))
@@ -217,6 +216,12 @@
             (cons (apply f heads)
                   (apply (symf mapcar) f tails)))
           ()))
+
+(defun mapcar-single (f xs)
+  (if (emptyp xs)
+      xs
+      (cons (funcall f (first xs))
+            (mapcar-single f (rest xs)))))
 
 (defmacro dbgp (str-prefix & forms)
   (qquote

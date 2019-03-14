@@ -9,6 +9,20 @@ use std::rc::Rc;
 
 macro_rules! define_unwrapper {
     ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
+        pub fn $id(arg: &$enum) -> Result<&$to, error::CastError> {
+            match arg {
+                $enum::$from(x) => Ok(x),
+                x => Err(error::CastError::new(
+                    format!("{}", x).to_string(),
+                    stringify!($to).to_string(),
+                )),
+            }
+        }
+    };
+}
+
+macro_rules! define_unwrapper_owned {
+    ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
         pub fn $id(arg: $enum) -> Result<$to, error::CastError> {
             match arg {
                 $enum::$from(x) => Ok(x),
@@ -20,6 +34,7 @@ macro_rules! define_unwrapper {
         }
     };
 }
+
 
 #[derive(Debug, Clone)]
 pub struct EnvFrame {
@@ -73,7 +88,7 @@ impl Env {
 }
 
 #[derive(Clone)]
-pub struct NativeFnWrapper(pub fn(Env, LispObject) -> error::GenResult<LispObject>);
+pub struct NativeFnWrapper(pub fn(Env, &LispObject) -> error::GenResult<LispObject>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct InterpretedFn {
@@ -148,3 +163,11 @@ define_unwrapper!(to_vector(LispObject :: Vector) -> Vector<LispObject>);
 define_unwrapper!(to_function(LispObject :: Fn) -> Function);
 define_unwrapper!(to_special(LispObject :: Special) -> NativeFnWrapper);
 define_unwrapper!(to_macro(LispObject :: Macro) -> Function);
+
+define_unwrapper_owned!(to_symbol_owned(LispObject :: Symbol) -> Symbol);
+define_unwrapper_owned!(to_i64_owned(LispObject :: Integer) -> i64);
+define_unwrapper_owned!(to_string_owned(LispObject :: String) -> String);
+define_unwrapper_owned!(to_vector_owned(LispObject :: Vector) -> Vector<LispObject>);
+define_unwrapper_owned!(to_function_owned(LispObject :: Fn) -> Function);
+define_unwrapper_owned!(to_special_owned(LispObject :: Special) -> NativeFnWrapper);
+define_unwrapper_owned!(to_macro_owned(LispObject :: Macro) -> Function);

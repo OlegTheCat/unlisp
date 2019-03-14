@@ -26,7 +26,7 @@ fn eval_stdlib(env: &core::Env) {
     loop {
         match reader.read_form() {
             Ok(form) => {
-                eval::eval(env.clone(), form).expect("error during stdlib eval");
+                eval::eval(env.clone(), &form).expect("error during stdlib eval");
             }
             Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
 
@@ -46,11 +46,13 @@ fn repl() {
     native::prepare_native_stdlib(env.global_env.as_ref().borrow_mut().deref_mut());
     eval_stdlib(&env);
 
-    let mut reader = reader::Reader::create(&mut stdin);
+    let mut s = "(mapcar (symf add) (range 1000) (range 1000))".as_bytes();
+
+    let mut reader = reader::Reader::create(&mut s);
 
     loop {
         match reader.read_form() {
-            Ok(form) => match eval::eval(env.clone(), form) {
+            Ok(form) => match eval::eval(env.clone(), &form) {
                 Ok(lo) => {
                     println!("{}", lo);
                 }
