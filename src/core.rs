@@ -88,7 +88,7 @@ impl Env {
 }
 
 #[derive(Clone)]
-pub struct NativeFnWrapper(pub fn(Env, &LispObject) -> error::GenResult<LispObject>);
+pub struct NativeFnWrapper(pub fn(Env, Vec<&LispObject>) -> error::GenResult<LispObject>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct InterpretedFn {

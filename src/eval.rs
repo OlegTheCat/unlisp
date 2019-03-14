@@ -40,13 +40,11 @@ pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<core::Function> {
 pub fn call_function_object<'a, 'b>(env: Env, f: &'a core::Function, args: impl Iterator<Item = &'b LispObject>, args_count: usize, eval_args: bool) -> error::GenResult<LispObject> {
     match f {
         core::Function::NativeFunction(native_fn) => {
-            let mut args: Vector<LispObject> = args
+            let mut evaled_args = args
                 .map(|lo| if eval_args { eval(env.clone(), lo) } else { Ok(lo.clone()) })
-                .collect::<Result<Vector<_>, _>>()?;
+                .collect::<Result<Vec<_>, _>>()?;
 
-            args.push_front(core::LispObject::Fn(core::Function::NativeFunction(native_fn.clone())));
-
-            native_fn.0(env, &LispObject::Vector(args))
+            native_fn.0(env, evaled_args.iter().collect())
         },
         core::Function::InterpretedFunction(interpreted_fn) => {
             let has_restarg = interpreted_fn.restarg.is_some();
@@ -123,15 +121,15 @@ fn call_macro(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
     eval(env, &expanded)
 }
 
-fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
-    let orig = form;
+fn call_symbol<'a>(env: Env, form: &'a LispObject) -> error::GenResult<LispObject> {
     let form = core::to_vector(form)?;
-    let sym = core::to_symbol(&form[0])?;
+    let mut form_iter = form.into_iter();
+    let sym = core::to_symbol(form_iter.next().unwrap())?;
 
     let spec = env.global_env.as_ref().borrow().special_env.get(sym).map(|f| f.clone());
 
     if let Some(f) = spec {
-        f.0(env.clone(), orig)
+        f.0(env.clone(), form_iter.collect())
     } else if let Some(ref f) = lookup_symbol_fn(&env, sym) {
         let mut args = form.iter();
         args.next();
@@ -167,9 +165,9 @@ pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
         LispObject::Vector(ref vec) => match nth(vec, 0).unwrap() {
             LispObject::Symbol(_) => call_symbol(env, form),
 
-            LispObject::Fn(_) => call_fn(env, form),
-            LispObject::Macro(_) => call_macro(env, form),
-            LispObject::Special(core::NativeFnWrapper(f)) => f(env, form),
+            // LispObject::Fn(_) => call_fn(env, form),
+            // LispObject::Macro(_) => call_macro(env, form),
+            // LispObject::Special(core::NativeFnWrapper(f)) => f(env, form),
 
             _=> Err(Box::new(syntax_err("illegal function call")))
         },

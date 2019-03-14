@@ -46,10 +46,10 @@ fn repl() {
     native::prepare_native_stdlib(env.global_env.as_ref().borrow_mut().deref_mut());
     eval_stdlib(&env);
 
-    // let mut s = "(mapcar (symf add) (range 1000) (range 1000))".as_bytes();
-    // let mut reader = reader::Reader::create(&mut s);
+    let mut s = "(mapcar (symf add) (range 1000) (range 1000))".as_bytes();
+    let mut reader = reader::Reader::create(&mut s);
 
-    let mut reader = reader::Reader::create(&mut stdin);
+    // let mut reader = reader::Reader::create(&mut stdin);
 
     loop {
         match reader.read_form() {

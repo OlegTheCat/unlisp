@@ -17,13 +17,9 @@ fn identity(v: LispObject) -> LispObject {
 macro_rules! define_native_fn {
     ($id:ident ($env:ident, $( $arg:ident : $converter:path ),*) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: core::Env, lo: &LispObject ) -> error::GenResult<LispObject> {
-            let mut form = core::to_vector(lo)?;
-            let args_count = form.len() - 1;
-
-            let mut args_iter = form.iter();
-            args_iter.next();
-
+        fn $id( $env: core::Env, args: Vec<&LispObject> ) -> error::GenResult<LispObject> {
+            let args_count = args.len();
+            let mut args = args.into_iter();
             let mut parameters_count = 0;
             $( stringify!($arg); parameters_count += 1; )*
 
@@ -34,7 +30,7 @@ macro_rules! define_native_fn {
                                                stringify!($id).to_string())));
                 }
 
-            $( let mut $arg = $converter(args_iter.next().unwrap())?; )*
+            $( let mut $arg = $converter(args.next().unwrap())?; )*
 
             let res = $result_wrap($body);
             Ok(res)
@@ -43,27 +39,27 @@ macro_rules! define_native_fn {
 
     ($id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: core::Env, lo: &LispObject ) -> error::GenResult<LispObject> {
-            let mut form = core::to_vector(lo)?;
-            let mut args = form.clone().slice(1..);
+        fn $id( $env: core::Env, args: Vec<&LispObject> ) -> error::GenResult<LispObject> {
+
+            let args_count = args.len();
+            let mut args = args.into_iter();
 
             #[allow(unused_mut)]
             let mut non_vararg_parameters_count = 0;
             $( stringify!($arg); non_vararg_parameters_count += 1; )*
 
-                if non_vararg_parameters_count > args.len() {
+                if non_vararg_parameters_count > args_count {
                     return Err(Box::new(
                         error::ArityError::new(non_vararg_parameters_count,
-                                               args.len(),
+                                               args_count,
                                                stringify!($id).to_string())));
                 }
 
             #[allow(unused_mut)]
-            let mut iter = args.iter();
 
-            $( #[allow(unused_mut)] let mut $arg = $converter(iter.next().unwrap())?; )*
+            $( #[allow(unused_mut)] let mut $arg = $converter(args.next().unwrap())?; )*
 
-            let mut $vararg: Vector<_> = iter
+            let mut $vararg: Vector<_> = args
                 .map(|lo| $vconverter(lo))
                 .collect::<Result<Vector<_>, _>>()?;
 
