@@ -244,3 +244,5 @@
                     (funcall loop (sub to 1)
                              (cons to acc))))))
     (funcall loop to ())))
+
+(defmacro comment (& body))

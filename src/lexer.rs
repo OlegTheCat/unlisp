@@ -104,6 +104,15 @@ impl<'a, T: Read> Lexer<'a, T> {
         Ok(buf.into_iter().collect())
     }
 
+    fn skip_line(&mut self) -> io::Result<()> {
+        let mut next_char = self.next_char()?;
+        while next_char.is_some() && next_char.unwrap() != '\n' {
+            next_char = self.next_char()?;
+        }
+
+        Ok(())
+    }
+
     pub fn next_token(&mut self) -> io::Result<Option<Token>> {
         let c = self.next_char()?;
         if c.is_none() {
@@ -117,6 +126,10 @@ impl<'a, T: Read> Lexer<'a, T> {
         }
 
         let tok = match c {
+            ';' => {
+                self.skip_line()?;
+                return self.next_token();
+            }
             '(' => Token::LeftPar,
             ')' => Token::RightPar,
 
