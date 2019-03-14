@@ -62,7 +62,7 @@ pub fn call_function_object(env: Env, f: core::Function, args: Vector<LispObject
                     .collect::<Vector<_>>();
 
                 if let Some(restarg) = interpreted_fn.restarg {
-                    arglist_as_vec.push_back(LispObject::Symbol(Symbol("&".to_string())));
+                    arglist_as_vec.push_back(LispObject::Symbol(Symbol::new("&")));
                     arglist_as_vec.push_back(LispObject::Symbol(restarg));
                 }
 
@@ -129,7 +129,7 @@ fn call_symbol(env: Env, form: LispObject) -> error::GenResult<LispObject> {
         LispObject::Macro(f)
     } else {
         return Err(Box::new(error::UndefinedSymbol::new(
-            sym.0.to_string(),
+            sym.name(),
             true,
         )));
     };
@@ -152,7 +152,7 @@ pub fn eval(env: Env, form: LispObject) -> error::GenResult<LispObject> {
 
         LispObject::Vector(ref vec) if vec.len() == 0 => Ok(LispObject::Vector(vec.clone())),
         LispObject::Symbol(s) => {
-            lookup_symbol_value(&env, &s).ok_or(Box::new(error::UndefinedSymbol::new(s.0, false)))
+            lookup_symbol_value(&env, &s).ok_or(Box::new(error::UndefinedSymbol::new(s.name(), false)))
         }
         LispObject::Vector(ref vec) => match nth(vec.clone(), 0).unwrap() {
             LispObject::Symbol(_) => call_symbol(env, form.clone()),

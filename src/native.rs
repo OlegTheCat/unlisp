@@ -197,7 +197,7 @@ define_native_fn! {
 pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
     let mut set = |name: &str, f| {
         global_env.fn_env.insert(
-            Symbol(name.to_string()),
+            Symbol::new(name),
             core::Function::NativeFunction(core::NativeFnWrapper(f)),
         );
     };

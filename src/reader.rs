@@ -39,7 +39,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         match tok {
             Token::Symbol(s) if s == "nil" => Some(LispObject::Nil),
             Token::Symbol(s) if s == "t" => Some(LispObject::T),
-            Token::Symbol(s) => Some(LispObject::Symbol(Symbol(s.to_string()))),
+            Token::Symbol(s) => Some(LispObject::Symbol(Symbol::new(s.clone()))),
             Token::IntegerLiteral(i) => Some(LispObject::Integer(*i)),
             Token::StringLiteral(s) => Some(LispObject::String(s.to_string())),
             _ => None,

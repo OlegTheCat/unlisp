@@ -63,7 +63,7 @@ fn parse_arglist(arglist: Vector<Symbol>) -> error::GenResult<(Vector<Symbol>, O
     let mut iter = arglist.into_iter();
     let simple_args = iter
         .by_ref()
-        .take_while(|s| *s != Symbol("&".to_string()))
+        .take_while(|s| *s != Symbol::new("&"))
         .collect();
 
     let restargs = iter.collect::<Vec<_>>();
@@ -173,7 +173,7 @@ fn symbol_function(env: Env, form: LispObject) -> error::GenResult<LispObject> {
     let arg = nth(form, 1).ok_or(syntax_err("no arg in symbol-function"))?;
     let arg = core::to_symbol(arg)?;
     let f = eval::lookup_symbol_fn(&env, &arg).ok_or(error::UndefinedSymbol::new(
-        arg.0.to_string(),
+        arg.name(),
         true,
     ))?;
 
@@ -185,15 +185,15 @@ pub fn prepare_specials(global_env: &mut core::GlobalEnvFrame) {
     let mut set = |s: &str, f| {
         global_env
             .special_env
-            .insert(Symbol(s.to_string()), core::NativeFnWrapper(f));
+            .insert(Symbol::new(s), core::NativeFnWrapper(f));
     };
 
+    set("quote", quote_form);
     set("if", if_form);
     set("let", let_form);
     set("set-fn", set_fn);
     set("set-macro-fn", set_macro_fn);
     set("lambda", lambda_form);
-    set("quote", quote_form);
     set("macroexpand-1", macroexpand_1);
     set("error", raise_error);
     set("symbol-function", symbol_function);

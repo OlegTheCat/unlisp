@@ -116,7 +116,17 @@ impl Eq for NativeFnWrapper {}
 impl Copy for NativeFnWrapper {}
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Symbol(pub String);
+pub struct Symbol(Rc<String>);
+
+impl Symbol {
+    pub fn new(s: impl Into<String>) -> Self {
+        Symbol(Rc::new(s.into()))
+    }
+
+    pub fn name(&self) -> String {
+        self.0.as_ref().clone()
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum LispObject {
