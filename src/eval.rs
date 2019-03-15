@@ -97,21 +97,6 @@ pub fn call_function_object(env: Env, f: &core::Function, args: List<LispObject>
     }
 }
 
-fn call_fn(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
-    let mut form = core::to_list(form)?;
-    let func = core::to_function(form.ufirst())?;
-
-    call_function_object(env, func, form.tail(), true)
-}
-
-fn call_macro(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
-    let mut form = core::to_list(form)?;
-    let func = core::to_macro(form.ufirst())?;
-
-    let expanded = call_function_object(env.clone(), func, form.tail(), false)?;
-    eval(env, &expanded)
-}
-
 fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
     let form = core::to_list(form)?;
     let sym = core::to_symbol(form.first().unwrap())?;
@@ -141,24 +126,13 @@ pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
         self_eval @ LispObject::String(_) => Ok(self_eval.clone()),
         self_eval @ LispObject::Fn(_) => Ok(self_eval.clone()),
 
-        LispObject::Special(_) => Err(Box::new(syntax_err("standalone special"))),
-        LispObject::Macro(_) => Err(Box::new(syntax_err("standalone macro"))),
-
         LispObject::List(ref list) if list.is_empty() => Ok(LispObject::List(list.clone())),
         LispObject::Symbol(s) => {
             lookup_symbol_value(&env, &s).ok_or(Box::new(error::UndefinedSymbol::new(s.name(), false)))
         }
         LispObject::List(ref list) => match list.first().unwrap() {
             LispObject::Symbol(_) => call_symbol(env, form),
-
-            // LispObject::Fn(_) => call_fn(env, form),
-            // LispObject::Macro(_) => call_macro(env, form),
-            // LispObject::Special(core::NativeFnWrapper(f)) => f(env, form),
-
-            _=> {
-                println!("illegal {}", form);
-                Err(Box::new(syntax_err("illegal function call")))
-            }
+            _=> Err(Box::new(syntax_err("illegal function call")))
         },
     }
 }

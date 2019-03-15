@@ -41,8 +41,6 @@ impl fmt::Display for core::LispObject {
             LispObject::Integer(i) => write!(f, "{}", i),
             LispObject::String(s) => write!(f, "\"{}\"", s),
             LispObject::Fn(func) => write!(f, "{}", func),
-            LispObject::Macro(func) => write!(f, "{}+MACRO", func),
-            LispObject::Special(_) => Err(fmt::Error),
             LispObject::Symbol(s) => write!(f, "{}", s),
             LispObject::List(list) => write_list(f, list),
         }

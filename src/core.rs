@@ -9,6 +9,7 @@ use std::rc::Rc;
 
 macro_rules! define_unwrapper {
     ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
+        #[allow(unused)]
         pub fn $id(arg: &$enum) -> Result<&$to, error::CastError> {
             match arg {
                 $enum::$from(x) => Ok(x),
@@ -23,6 +24,7 @@ macro_rules! define_unwrapper {
 
 macro_rules! define_unwrapper_owned {
     ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
+        #[allow(unused)]
         pub fn $id(arg: $enum) -> Result<$to, error::CastError> {
             match arg {
                 $enum::$from(x) => Ok(x),
@@ -150,9 +152,7 @@ pub enum LispObject {
     Integer(i64),
     String(String),
     List(List<LispObject>),
-    Fn(Function),
-    Macro(Function),
-    Special(NativeFnWrapper),
+    Fn(Function)
 }
 
 impl LispObject {
@@ -166,13 +166,9 @@ define_unwrapper!(to_i64(LispObject :: Integer) -> i64);
 define_unwrapper!(to_string(LispObject :: String) -> String);
 define_unwrapper!(to_list(LispObject :: List) -> List<LispObject>);
 define_unwrapper!(to_function(LispObject :: Fn) -> Function);
-define_unwrapper!(to_special(LispObject :: Special) -> NativeFnWrapper);
-define_unwrapper!(to_macro(LispObject :: Macro) -> Function);
 
 define_unwrapper_owned!(to_symbol_owned(LispObject :: Symbol) -> Symbol);
 define_unwrapper_owned!(to_i64_owned(LispObject :: Integer) -> i64);
 define_unwrapper_owned!(to_string_owned(LispObject :: String) -> String);
 define_unwrapper_owned!(to_list_owned(LispObject :: List) -> List<LispObject>);
 define_unwrapper_owned!(to_function_owned(LispObject :: Fn) -> Function);
-define_unwrapper_owned!(to_special_owned(LispObject :: Special) -> NativeFnWrapper);
-define_unwrapper_owned!(to_macro_owned(LispObject :: Macro) -> Function);

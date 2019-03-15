@@ -99,51 +99,6 @@ impl<T> List<T> {
         }
     }
 
-    fn append_links(link1: Link<T>, link2: Link<T>) -> Link<T> {
-        match link1 {
-            Some(cons_rc) => {
-                Some(Rc::new(Cons {
-                    elem: cons_rc.elem.clone(),
-                    tail: Self::append_links(cons_rc.tail.clone(), link2)
-                }))
-            }
-            None => link2
-        }
-    }
-
-    pub fn append(&self, other: Self) -> Self {
-        Self {
-            head: Self::append_links(self.head.clone(), other.head.clone()),
-            length: self.len() + other.len()
-        }
-    }
-
-    pub fn split_at(&self, idx: usize) -> (Self, Self) {
-        let empty = Self::empty();
-        if idx >= self.len() {
-            (self.clone(), empty)
-        } else {
-            let mut lhs = vec![];
-            let mut rhs = self.clone();
-            let mut i = idx;
-
-            while i != 0 {
-                lhs.push(rhs.first_rc().unwrap().clone());
-                rhs = rhs.tail();
-
-                i -= 1;
-            }
-
-            let mut final_lhs = empty;
-
-            for x in lhs.into_iter().rev() {
-                final_lhs = final_lhs.cons_rc(x);
-            }
-
-            (final_lhs, rhs)
-        }
-    }
-
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T> {
         ListIterator {
             next: self.head.as_ref().map(|cons_rc| cons_rc.as_ref())

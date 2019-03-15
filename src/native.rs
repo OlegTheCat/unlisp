@@ -121,7 +121,7 @@ fn native_apply(env: core::Env, args: List<LispObject>) -> error::GenResult<Lisp
     let unspliced = args_iter.by_ref().take(args.len() - 1).collect::<Vec<_>>();
 
     let last_arg = args_iter.next().unwrap();
-    let last_arg = core::to_list(last_arg.as_ref())?;
+    let last_arg = core::to_list(last_arg.as_ref())? ;
     let mut args = last_arg.clone();
 
     for x in unspliced.into_iter().rev() {
