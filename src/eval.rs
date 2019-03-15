@@ -1,9 +1,9 @@
+use cons::List;
 use core;
 use core::Env;
 use core::LispObject;
 use core::Symbol;
 use error;
-use cons::List;
 
 fn syntax_err(message: &str) -> error::SyntaxError {
     error::SyntaxError::new(message.to_string())
@@ -14,7 +14,12 @@ fn lookup_symbol_value(env: &Env, s: &Symbol) -> Option<LispObject> {
         return Some(val.clone());
     }
 
-    env.global_env.as_ref().borrow().sym_env.get(s).map(|v| v.clone())
+    env.global_env
+        .as_ref()
+        .borrow()
+        .sym_env
+        .get(s)
+        .map(|v| v.clone())
 }
 
 pub fn lookup_symbol_fn(env: &Env, s: &Symbol) -> Option<core::Function> {
@@ -22,7 +27,12 @@ pub fn lookup_symbol_fn(env: &Env, s: &Symbol) -> Option<core::Function> {
         return Some(val.clone());
     }
 
-    env.global_env.as_ref().borrow().fn_env.get(s).map(|v| v.clone())
+    env.global_env
+        .as_ref()
+        .borrow()
+        .fn_env
+        .get(s)
+        .map(|v| v.clone())
 }
 
 pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<core::Function> {
@@ -30,25 +40,36 @@ pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<core::Function> {
         return Some(val.clone());
     }
 
-    env.global_env.as_ref().borrow().macro_env.get(s).map(|v| v.clone())
+    env.global_env
+        .as_ref()
+        .borrow()
+        .macro_env
+        .get(s)
+        .map(|v| v.clone())
 }
 
-pub fn call_function_object(env: Env, f: &core::Function, args: List<LispObject>, eval_args: bool) -> error::GenResult<LispObject> {
-
+pub fn call_function_object(
+    env: Env,
+    f: &core::Function,
+    args: List<LispObject>,
+    eval_args: bool,
+) -> error::GenResult<LispObject> {
     let args = if eval_args {
-        args.iter().map(|lo| eval(env.clone(), lo)).collect::<Result<List<_>, _>>()?
+        args.iter()
+            .map(|lo| eval(env.clone(), lo))
+            .collect::<Result<List<_>, _>>()?
     } else {
         args
     };
 
     match f {
-        core::Function::NativeFunction(native_fn) => {
-            native_fn.0(env, args)
-        },
+        core::Function::NativeFunction(native_fn) => native_fn.0(env, args),
         core::Function::InterpretedFunction(interpreted_fn) => {
             let has_restarg = interpreted_fn.restarg.is_some();
 
-            if (args.len() < interpreted_fn.arglist.len()) || (!has_restarg && interpreted_fn.arglist.len() != args.len()) {
+            if (args.len() < interpreted_fn.arglist.len())
+                || (!has_restarg && interpreted_fn.arglist.len() != args.len())
+            {
                 let expected = interpreted_fn.arglist.len();
                 let actual = args.len();
                 let mut arglist = interpreted_fn
@@ -81,10 +102,10 @@ pub fn call_function_object(env: Env, f: &core::Function, args: List<LispObject>
 
             if has_restarg {
                 let restarg = args.map(|lo| lo.clone()).collect();
-                new_env
-                    .cur_env
-                    .sym_env
-                    .insert(interpreted_fn.restarg.as_ref().unwrap().clone(), LispObject::List(restarg));
+                new_env.cur_env.sym_env.insert(
+                    interpreted_fn.restarg.as_ref().unwrap().clone(),
+                    LispObject::List(restarg),
+                );
             }
 
             let mut result = LispObject::nil();
@@ -102,7 +123,13 @@ fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
     let sym = core::to_symbol(form.first().unwrap())?;
     let args = form.tail();
 
-    let spec = env.global_env.as_ref().borrow().special_env.get(sym).map(|f| f.clone());
+    let spec = env
+        .global_env
+        .as_ref()
+        .borrow()
+        .special_env
+        .get(sym)
+        .map(|f| f.clone());
 
     if let Some(f) = spec {
         f.0(env.clone(), args)
@@ -112,10 +139,7 @@ fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
         let expanded = call_function_object(env.clone(), f, args, false)?;
         eval(env.clone(), &expanded)
     } else {
-        Err(Box::new(error::UndefinedSymbol::new(
-            sym.name(),
-            true,
-        )))
+        Err(Box::new(error::UndefinedSymbol::new(sym.name(), true)))
     }
 }
 
@@ -127,12 +151,11 @@ pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
         self_eval @ LispObject::Fn(_) => Ok(self_eval.clone()),
 
         LispObject::List(ref list) if list.is_empty() => Ok(LispObject::List(list.clone())),
-        LispObject::Symbol(s) => {
-            lookup_symbol_value(&env, &s).ok_or(Box::new(error::UndefinedSymbol::new(s.name(), false)))
-        }
+        LispObject::Symbol(s) => lookup_symbol_value(&env, &s)
+            .ok_or(Box::new(error::UndefinedSymbol::new(s.name(), false))),
         LispObject::List(ref list) => match list.first().unwrap() {
             LispObject::Symbol(_) => call_symbol(env, form),
-            _=> Err(Box::new(syntax_err("illegal function call")))
+            _ => Err(Box::new(syntax_err("illegal function call"))),
         },
     }
 }

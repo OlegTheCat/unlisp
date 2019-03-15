@@ -2,23 +2,22 @@ use std::io;
 // use std::io::BufRead;
 use std::fs;
 use std::io::Write;
-use std::thread;
 use std::ops::DerefMut;
+use std::thread;
 
 extern crate im;
 extern crate scopeguard;
 
+mod cons;
 mod core;
 mod error;
+mod eval;
 mod lexer;
+mod native;
+mod print;
 mod pushback_reader;
 mod reader;
 mod special;
-mod native;
-mod eval;
-mod print;
-mod cons;
-
 
 fn eval_stdlib(env: &core::Env) {
     let mut file = fs::File::open("src/stdlib.unl").expect("stdlib file not found");

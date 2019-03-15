@@ -1,3 +1,4 @@
+use cons::List;
 use core;
 use core::Env;
 use core::LispObject;
@@ -5,7 +6,6 @@ use core::Symbol;
 use error;
 use eval;
 use eval::eval;
-use cons::List;
 
 fn syntax_err(message: &str) -> error::SyntaxError {
     error::SyntaxError::new(message.to_string())
@@ -39,7 +39,9 @@ fn let_form(env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
             core::to_symbol(sym).map_err(|_e| syntax_err("not a symbol in binding clause"))?;
 
         let val = binding.tail();
-        let val = val.first().ok_or(syntax_err("no value in binding clause"))?;
+        let val = val
+            .first()
+            .ok_or(syntax_err("no value in binding clause"))?;
         let val = eval(new_env.clone(), val)?;
 
         new_env.cur_env.sym_env.insert(sym.clone(), val);
@@ -82,7 +84,11 @@ fn lambda_form(_env: Env, args: List<LispObject>) -> error::GenResult<LispObject
         core::to_list(arglist).map_err(|_e| syntax_err("lambda arglist in not a list"))?;
     let arglist = arglist
         .iter()
-        .map(|lo| core::to_symbol(lo).map(|s| s.clone()).map_err(|_e| syntax_err("expected symbol in arglist")))
+        .map(|lo| {
+            core::to_symbol(lo)
+                .map(|s| s.clone())
+                .map_err(|_e| syntax_err("expected symbol in arglist"))
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     let (simple_args, restarg) = parse_arglist(arglist)?;
@@ -106,7 +112,11 @@ fn set_fn(env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
     let func = args.next().ok_or(syntax_err("no function in set-fn"))?;
     let func = core::to_function_owned(eval(env.clone(), &func)?)?;
 
-    env.global_env.as_ref().borrow_mut().fn_env.insert(sym.clone(), func);
+    env.global_env
+        .as_ref()
+        .borrow_mut()
+        .fn_env
+        .insert(sym.clone(), func);
     Ok(LispObject::nil())
 }
 
@@ -115,10 +125,16 @@ fn set_macro_fn(env: Env, args: List<LispObject>) -> error::GenResult<LispObject
     let sym = args.next().ok_or(syntax_err("no symbol in set-macro-fn"))?;
     let sym = core::to_symbol(sym).map_err(|_e| syntax_err("not a symbol in set-macro-fn"))?;
 
-    let func = args.next().ok_or(syntax_err("no function in set-macro-fn"))?;
+    let func = args
+        .next()
+        .ok_or(syntax_err("no function in set-macro-fn"))?;
     let func = core::to_function_owned(eval(env.clone(), &func)?)?;
 
-    env.global_env.as_ref().borrow_mut().macro_env.insert(sym.clone(), func);
+    env.global_env
+        .as_ref()
+        .borrow_mut()
+        .macro_env
+        .insert(sym.clone(), func);
     Ok(LispObject::nil())
 }
 
@@ -164,11 +180,8 @@ fn symbol_function(env: Env, args: List<LispObject>) -> error::GenResult<LispObj
     let mut args = args.iter();
     let arg = args.next().ok_or(syntax_err("no arg in symbol-function"))?;
     let arg = core::to_symbol(arg)?;
-    let f = eval::lookup_symbol_fn(&env, &arg).ok_or(error::UndefinedSymbol::new(
-        arg.name(),
-        true,
-    ))?;
-
+    let f =
+        eval::lookup_symbol_fn(&env, &arg).ok_or(error::UndefinedSymbol::new(arg.name(), true))?;
 
     Ok(LispObject::Fn(f))
 }

@@ -1,10 +1,10 @@
+use cons::List;
 use error;
 use im::HashMap;
-use cons::List;
+use std::cell::RefCell;
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
-use std::cell::RefCell;
 use std::rc::Rc;
 
 macro_rules! define_unwrapper {
@@ -36,7 +36,6 @@ macro_rules! define_unwrapper_owned {
         }
     };
 }
-
 
 #[derive(Debug, Clone)]
 pub struct EnvFrame {
@@ -77,14 +76,14 @@ impl GlobalEnvFrame {
 #[derive(Debug, Clone)]
 pub struct Env {
     pub global_env: Rc<RefCell<GlobalEnvFrame>>,
-    pub cur_env: EnvFrame
+    pub cur_env: EnvFrame,
 }
 
 impl Env {
     pub fn new() -> Env {
         Env {
             global_env: Rc::new(RefCell::new(GlobalEnvFrame::new())),
-            cur_env: EnvFrame::new()
+            cur_env: EnvFrame::new(),
         }
     }
 }
@@ -152,7 +151,7 @@ pub enum LispObject {
     Integer(i64),
     String(String),
     List(List<LispObject>),
-    Fn(Function)
+    Fn(Function),
 }
 
 impl LispObject {

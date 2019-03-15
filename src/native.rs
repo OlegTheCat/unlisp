@@ -1,10 +1,10 @@
+use cons::List;
 use core;
 use core::LispObject;
 use core::Symbol;
 use error;
-use std::io::Write;
 use eval;
-use cons::List;
+use std::io::Write;
 
 fn identity_converter(v: &LispObject) -> error::GenResult<&LispObject> {
     Ok(&v)
@@ -106,11 +106,7 @@ define_native_fn! {
 
 fn native_apply(env: core::Env, args: List<LispObject>) -> error::GenResult<LispObject> {
     if args.len() <= 1 {
-        return Err(Box::new(error::ArityError::new(
-            2,
-            1,
-            "apply".to_string()
-        )));
+        return Err(Box::new(error::ArityError::new(2, 1, "apply".to_string())));
     }
 
     let f = core::to_function(args.first().unwrap())?;
@@ -121,7 +117,7 @@ fn native_apply(env: core::Env, args: List<LispObject>) -> error::GenResult<Lisp
     let unspliced = args_iter.by_ref().take(args.len() - 1).collect::<Vec<_>>();
 
     let last_arg = args_iter.next().unwrap();
-    let last_arg = core::to_list(last_arg.as_ref())? ;
+    let last_arg = core::to_list(last_arg.as_ref())?;
     let mut args = last_arg.clone();
 
     for x in unspliced.into_iter().rev() {
@@ -211,7 +207,6 @@ pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
             core::Function::NativeFunction(core::NativeFnWrapper(f)),
         );
     };
-
 
     set("cons", native_cons);
     set("apply", native_apply);

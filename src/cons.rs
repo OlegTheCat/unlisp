@@ -1,12 +1,12 @@
-use std::rc::Rc;
-use std::iter::FromIterator;
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
+use std::iter::FromIterator;
+use std::rc::Rc;
 
 pub struct List<T> {
     head: Link<T>,
-    length: usize
+    length: usize,
 }
 
 type Link<T> = Option<Rc<Cons<T>>>;
@@ -18,7 +18,10 @@ struct Cons<T> {
 
 impl<T> List<T> {
     pub fn empty() -> Self {
-        List { head: None, length: 0 }
+        List {
+            head: None,
+            length: 0,
+        }
     }
 
     pub fn from_iter<I: Iterator<Item = T>>(iter: I) -> Self {
@@ -39,7 +42,6 @@ impl<T> List<T> {
         }
 
         list
-
     }
 
     pub fn len(&self) -> usize {
@@ -56,7 +58,7 @@ impl<T> List<T> {
                 elem: x,
                 tail: self.head.clone(),
             })),
-            length: self.length + 1
+            length: self.length + 1,
         }
     }
 
@@ -94,20 +96,20 @@ impl<T> List<T> {
 
             Self {
                 head: Some(link.clone()),
-                length: self.len() - n
+                length: self.len() - n,
             }
         }
     }
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T> {
         ListIterator {
-            next: self.head.as_ref().map(|cons_rc| cons_rc.as_ref())
+            next: self.head.as_ref().map(|cons_rc| cons_rc.as_ref()),
         }
     }
 
     pub fn rc_iter(&self) -> impl Iterator<Item = Rc<T>> {
         LinkIterator {
-            next: self.head.clone()
+            next: self.head.clone(),
         }
     }
 }
@@ -116,7 +118,7 @@ impl<T> Clone for List<T> {
     fn clone(&self) -> Self {
         List {
             head: self.head.clone(),
-            length: self.len()
+            length: self.len(),
         }
     }
 }
@@ -135,7 +137,7 @@ impl<T> Drop for List<T> {
 }
 
 struct LinkIterator<T> {
-    next: Link<T>
+    next: Link<T>,
 }
 
 impl<T> Iterator for LinkIterator<T> {
@@ -153,7 +155,7 @@ impl<T> Iterator for LinkIterator<T> {
 }
 
 struct ListIterator<'a, T> {
-    next: Option<&'a Cons<T>>
+    next: Option<&'a Cons<T>>,
 }
 
 impl<'a, T> Iterator for ListIterator<'a, T> {
@@ -168,7 +170,7 @@ impl<'a, T> Iterator for ListIterator<'a, T> {
 }
 
 impl<T> FromIterator<T> for List<T> {
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self::from_iter(iter.into_iter())
     }
 }

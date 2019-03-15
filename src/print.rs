@@ -1,6 +1,6 @@
+use cons::List;
 use core;
 use core::LispObject;
-use cons::List;
 use std::fmt;
 
 fn write_list(f: &mut fmt::Formatter, list: &List<LispObject>) -> Result<(), fmt::Error> {
