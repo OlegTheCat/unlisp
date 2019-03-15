@@ -1,6 +1,10 @@
 use std::rc::Rc;
 use std::iter::FromIterator;
+use std::fmt;
+use std::hash::Hash;
+use std::hash::Hasher;
 
+#[derive(Clone)]
 pub struct List<T> {
     head: Link<T>,
     length: usize
@@ -96,3 +100,39 @@ impl<T> FromIterator<T> for List<T> {
         list
     }
 }
+
+impl<T: fmt::Debug> fmt::Debug for List<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "( ")?;
+        for elem in self.iter() {
+            write!(f, "{:?} ", elem)?;
+        }
+        write!(f, ")")
+    }
+}
+
+impl<T: Hash> Hash for List<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for elem in self.iter() {
+            elem.hash(state);
+        }
+    }
+}
+
+impl<T: PartialEq> PartialEq for List<T> {
+    fn eq(&self, rhs: &Self) -> bool {
+        if self.len() != rhs.len() {
+            return false;
+        }
+
+        for (l, r) in self.iter().zip(rhs.iter()) {
+            if l != r {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl<T: Eq> Eq for List<T> {}
