@@ -6,7 +6,6 @@ use std::ops::DerefMut;
 use std::thread;
 
 extern crate im;
-extern crate scopeguard;
 
 mod cons;
 mod core;
