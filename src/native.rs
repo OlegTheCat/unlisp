@@ -104,31 +104,31 @@ define_native_fn! {
     }
 }
 
-define_native_fn! {
-    native_apply(env, f: core::to_function, ... args: identity_converter) -> identity {
-
-        // last one is to be spliced
-        let mut args_count = args.len() - 1;
-        let mut args_iter = args.iter();
-
-        let unspliced: Vec<_> = args_iter.by_ref().take(args_count).collect();
-
-        let last_arg = {
-            core::to_list(args_iter.next().ok_or(error::ArityError::new(
-                2,
-                1,
-                "apply".to_string()
-            ))?)?
-        };
-
-        let mut args = last_arg.clone();
-
-        for unspliced_one in unspliced.into_iter().rev() {
-            args = args.cons((**unspliced_one).clone());
-        }
-
-        eval::call_function_object(env, f, args, false)?
+fn native_apply(env: core::Env, args: List<LispObject>) -> error::GenResult<LispObject> {
+    if args.len() <= 1 {
+        return Err(Box::new(error::ArityError::new(
+            2,
+            1,
+            "apply".to_string()
+        )));
     }
+
+    let f = core::to_function(args.first().unwrap())?;
+
+    let args = args.tail();
+    let mut args_iter = args.rc_iter();
+
+    let unspliced = args_iter.by_ref().take(args.len() - 1).collect::<Vec<_>>();
+
+    let last_arg = args_iter.next().unwrap();
+    let last_arg = core::to_list(last_arg.as_ref())?;
+    let mut args = last_arg.clone();
+
+    for x in unspliced.into_iter().rev() {
+        args = args.cons_rc(x);
+    }
+
+    eval::call_function_object(env, f, args, false)
 }
 
 define_native_fn! {

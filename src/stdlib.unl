@@ -202,26 +202,30 @@
            (unq then)
            (unq else))))
 
-(defun mapcar (f xs & ys)
-  (if-let (split (reduce
-                    (lambda (acc list)
-                      (if (if (emptyp list) t (if (not acc) t nil))
-                          nil
-                          (list (cons (first list) (first acc))
-                                (cons (rest list) (second acc)))))
-                    (list () ())
-                    (reverse (cons xs ys))))
-          (let ((heads (first split))
-                (tails (second split)))
-            (cons (apply f heads)
-                  (apply (symf mapcar) f tails)))
-          ()))
+(defun every? (pred coll)
+  (if (emptyp coll)
+      t
+      (if (funcall pred (first coll))
+          (every? pred (rest coll))
+          nil)))
 
 (defun mapcar-single (f xs)
   (if (emptyp xs)
       xs
       (cons (funcall f (first xs))
             (mapcar-single f (rest xs)))))
+
+(defun mapcar (f xs & ys)
+  (let ((lists (cons xs ys)))
+    (if (every? (lambda (x) (not (emptyp x)))
+                lists)
+        (let ((heads (mapcar-single (symbol-function first)
+                                    lists))
+              (tails (mapcar-single (symbol-function rest)
+                                    lists)))
+          (cons (apply f heads)
+                (apply (symbol-function mapcar) f tails)))
+        ())))
 
 (defmacro dbgp (str-prefix & forms)
   (qquote

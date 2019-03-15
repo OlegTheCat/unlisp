@@ -155,7 +155,10 @@ pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
             // LispObject::Macro(_) => call_macro(env, form),
             // LispObject::Special(core::NativeFnWrapper(f)) => f(env, form),
 
-            _=> Err(Box::new(syntax_err("illegal function call")))
+            _=> {
+                println!("illegal {}", form);
+                Err(Box::new(syntax_err("illegal function call")))
+            }
         },
     }
 }

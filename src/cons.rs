@@ -4,7 +4,6 @@ use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-#[derive(Clone)]
 pub struct List<T> {
     head: Link<T>,
     length: usize
@@ -13,7 +12,7 @@ pub struct List<T> {
 type Link<T> = Option<Rc<Cons<T>>>;
 
 struct Cons<T> {
-    elem: T,
+    elem: Rc<T>,
     tail: Link<T>,
 }
 
@@ -51,7 +50,7 @@ impl<T> List<T> {
         self.len() == 0
     }
 
-    pub fn cons(&self, x: T) -> Self {
+    pub fn cons_rc(&self, x: Rc<T>) -> Self {
         List {
             head: Some(Rc::new(Cons {
                 elem: x,
@@ -61,7 +60,15 @@ impl<T> List<T> {
         }
     }
 
+    pub fn cons(&self, x: T) -> Self {
+        self.cons_rc(Rc::new(x))
+    }
+
     pub fn first(&self) -> Option<&T> {
+        self.first_rc().map(|rc| rc.as_ref())
+    }
+
+    fn first_rc(&self) -> Option<&Rc<T>> {
         self.head.as_ref().map(|cons_rc| &cons_rc.elem)
     }
 
@@ -92,13 +99,72 @@ impl<T> List<T> {
         }
     }
 
+    fn append_links(link1: Link<T>, link2: Link<T>) -> Link<T> {
+        match link1 {
+            Some(cons_rc) => {
+                Some(Rc::new(Cons {
+                    elem: cons_rc.elem.clone(),
+                    tail: Self::append_links(cons_rc.tail.clone(), link2)
+                }))
+            }
+            None => link2
+        }
+    }
+
+    pub fn append(&self, other: Self) -> Self {
+        Self {
+            head: Self::append_links(self.head.clone(), other.head.clone()),
+            length: self.len() + other.len()
+        }
+    }
+
+    pub fn split_at(&self, idx: usize) -> (Self, Self) {
+        let empty = Self::empty();
+        if idx >= self.len() {
+            (self.clone(), empty)
+        } else {
+            let mut lhs = vec![];
+            let mut rhs = self.clone();
+            let mut i = idx;
+
+            while i != 0 {
+                lhs.push(rhs.first_rc().unwrap().clone());
+                rhs = rhs.tail();
+
+                i -= 1;
+            }
+
+            let mut final_lhs = empty;
+
+            for x in lhs.into_iter().rev() {
+                final_lhs = final_lhs.cons_rc(x);
+            }
+
+            (final_lhs, rhs)
+        }
+    }
+
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T> {
         ListIterator {
             next: self.head.as_ref().map(|cons_rc| cons_rc.as_ref())
         }
     }
+
+    pub fn rc_iter(&self) -> impl Iterator<Item = Rc<T>> {
+        LinkIterator {
+            next: self.head.clone()
+        }
+    }
 }
 
+impl<T> Clone for List<T> {
+    fn clone(&self) -> Self {
+        List {
+            head: self.head.clone(),
+            length: self.len()
+        }
+    }
+}
 
 impl<T> Drop for List<T> {
     fn drop(&mut self) {
@@ -113,6 +179,23 @@ impl<T> Drop for List<T> {
     }
 }
 
+struct LinkIterator<T> {
+    next: Link<T>
+}
+
+impl<T> Iterator for LinkIterator<T> {
+    type Item = Rc<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next.is_none() {
+            None
+        } else {
+            let cons_rc = self.next.take().unwrap();
+            self.next = cons_rc.tail.clone();
+            Some(cons_rc.elem.clone())
+        }
+    }
+}
 
 struct ListIterator<'a, T> {
     next: Option<&'a Cons<T>>
@@ -124,7 +207,7 @@ impl<'a, T> Iterator for ListIterator<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         self.next.map(|cons| {
             self.next = cons.tail.as_ref().map(|cons_rc| cons_rc.as_ref());
-            &cons.elem
+            cons.elem.as_ref()
         })
     }
 }

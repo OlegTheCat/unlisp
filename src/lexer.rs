@@ -18,7 +18,7 @@ pub struct Lexer<'a, T: Read + 'a> {
 }
 
 fn valid_symbol_char(c: char) -> bool {
-    c.is_alphanumeric() || c == '&' || c == '*' || c == '-'
+    c.is_alphanumeric() || c == '&' || c == '*' || c == '-' || c == '?'
 }
 
 impl<'a, T: Read> Lexer<'a, T> {
