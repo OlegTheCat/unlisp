@@ -1,14 +1,14 @@
 use core;
 use core::LispObject;
-use im::Vector;
+use cons::List;
 use std::fmt;
 
-fn write_vector(f: &mut fmt::Formatter, vec: &Vector<LispObject>) -> Result<(), fmt::Error> {
+fn write_list(f: &mut fmt::Formatter, list: &List<LispObject>) -> Result<(), fmt::Error> {
     let mut first = true;
 
     write!(f, "(")?;
 
-    for form in vec {
+    for form in list.iter() {
         if !first {
             write!(f, " ")?;
         }
@@ -36,7 +36,7 @@ impl fmt::Display for core::Symbol {
 impl fmt::Display for core::LispObject {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            LispObject::Nil => write!(f, "NIL"),
+            LispObject::List(list) if list.is_empty() => write!(f, "NIL"),
             LispObject::T => write!(f, "T"),
             LispObject::Integer(i) => write!(f, "{}", i),
             LispObject::String(s) => write!(f, "\"{}\"", s),
@@ -44,7 +44,7 @@ impl fmt::Display for core::LispObject {
             LispObject::Macro(func) => write!(f, "{}+MACRO", func),
             LispObject::Special(_) => Err(fmt::Error),
             LispObject::Symbol(s) => write!(f, "{}", s),
-            LispObject::Vector(vec) => write_vector(f, vec),
+            LispObject::List(list) => write_list(f, list),
         }
     }
 }

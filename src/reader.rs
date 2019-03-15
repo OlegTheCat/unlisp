@@ -5,7 +5,7 @@ use std::io::Read;
 
 use super::lexer::Lexer;
 use super::lexer::Token;
-use im::Vector;
+use cons::List;
 
 pub struct Reader<'a, T: Read + 'a> {
     lexer: Lexer<'a, T>,
@@ -37,7 +37,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
 
     fn tok_to_trivial_form(&self, tok: &Token) -> Option<LispObject> {
         match tok {
-            Token::Symbol(s) if s == "nil" => Some(LispObject::Nil),
+            Token::Symbol(s) if s == "nil" => Some(LispObject::List(List::empty())),
             Token::Symbol(s) if s == "t" => Some(LispObject::T),
             Token::Symbol(s) => Some(LispObject::Symbol(Symbol::new(s.clone()))),
             Token::IntegerLiteral(i) => Some(LispObject::Integer(*i)),
@@ -47,7 +47,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
     }
 
     fn read_list_form(&mut self) -> io::Result<LispObject> {
-        let mut vec = Vector::new();
+        let mut vec = Vec::new();
 
         let mut tok = self.read_tok_or_eof()?;
 
@@ -64,11 +64,11 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
                 }
             }
 
-            vec.push_back(form);
+            vec.push(form);
             tok = self.read_tok_or_eof()?;
         }
 
-        Ok(LispObject::Vector(vec))
+        Ok(LispObject::List(List::from_rev_iter(vec.into_iter())))
     }
 
     pub fn read_form(&mut self) -> io::Result<LispObject> {

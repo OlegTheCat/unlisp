@@ -1,6 +1,6 @@
 use error;
 use im::HashMap;
-use im::Vector;
+use cons::List;
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -88,13 +88,13 @@ impl Env {
 }
 
 #[derive(Clone)]
-pub struct NativeFnWrapper(pub fn(Env, Vec<&LispObject>) -> error::GenResult<LispObject>);
+pub struct NativeFnWrapper(pub fn(Env, List<LispObject>) -> error::GenResult<LispObject>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct InterpretedFn {
     pub restarg: Option<Symbol>,
-    pub arglist: Vector<Symbol>,
-    pub body: Vector<LispObject>,
+    pub arglist: List<Symbol>,
+    pub body: List<LispObject>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -145,21 +145,26 @@ impl Symbol {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum LispObject {
-    Nil,
     T,
     Symbol(Symbol),
     Integer(i64),
     String(String),
-    Vector(Vector<LispObject>),
+    List(List<LispObject>),
     Fn(Function),
     Macro(Function),
     Special(NativeFnWrapper),
 }
 
+impl LispObject {
+    pub fn nil() -> Self {
+        LispObject::List(List::empty())
+    }
+}
+
 define_unwrapper!(to_symbol(LispObject :: Symbol) -> Symbol);
 define_unwrapper!(to_i64(LispObject :: Integer) -> i64);
 define_unwrapper!(to_string(LispObject :: String) -> String);
-define_unwrapper!(to_vector(LispObject :: Vector) -> Vector<LispObject>);
+define_unwrapper!(to_list(LispObject :: List) -> List<LispObject>);
 define_unwrapper!(to_function(LispObject :: Fn) -> Function);
 define_unwrapper!(to_special(LispObject :: Special) -> NativeFnWrapper);
 define_unwrapper!(to_macro(LispObject :: Macro) -> Function);
@@ -167,7 +172,7 @@ define_unwrapper!(to_macro(LispObject :: Macro) -> Function);
 define_unwrapper_owned!(to_symbol_owned(LispObject :: Symbol) -> Symbol);
 define_unwrapper_owned!(to_i64_owned(LispObject :: Integer) -> i64);
 define_unwrapper_owned!(to_string_owned(LispObject :: String) -> String);
-define_unwrapper_owned!(to_vector_owned(LispObject :: Vector) -> Vector<LispObject>);
+define_unwrapper_owned!(to_list_owned(LispObject :: List) -> List<LispObject>);
 define_unwrapper_owned!(to_function_owned(LispObject :: Fn) -> Function);
 define_unwrapper_owned!(to_special_owned(LispObject :: Special) -> NativeFnWrapper);
 define_unwrapper_owned!(to_macro_owned(LispObject :: Macro) -> Function);

@@ -18,8 +18,29 @@ struct Cons<T> {
 }
 
 impl<T> List<T> {
-    pub fn new() -> Self {
+    pub fn empty() -> Self {
         List { head: None, length: 0 }
+    }
+
+    pub fn from_iter<I: Iterator<Item = T>>(iter: I) -> Self {
+        let mut list = List::empty();
+        let buf = iter.into_iter().collect::<Vec<_>>();
+
+        for i in buf.into_iter().rev() {
+            list = list.cons(i);
+        }
+
+        list
+    }
+
+    pub fn from_rev_iter<I: Iterator<Item = T> + DoubleEndedIterator>(iter: I) -> Self {
+        let mut list = List::empty();
+        for i in iter.rev() {
+            list = list.cons(i);
+        }
+
+        list
+
     }
 
     pub fn len(&self) -> usize {
@@ -44,10 +65,30 @@ impl<T> List<T> {
         self.head.as_ref().map(|cons_rc| &cons_rc.elem)
     }
 
-    pub fn rest(&self) -> Self {
-        List {
-            head: self.head.as_ref().and_then(|cons_rc| cons_rc.tail.clone()),
-            length: if self.is_empty() { 0 } else { self.len() - 1 }
+    pub fn ufirst(&self) -> &T {
+        self.first().unwrap()
+    }
+
+    pub fn tail(&self) -> Self {
+        self.tailn(1)
+    }
+
+    pub fn tailn(&self, n: usize) -> Self {
+        if n >= self.len() {
+            Self::empty()
+        } else {
+            let mut i = n;
+            let mut link = self.head.as_ref().unwrap();
+
+            while i != 0 {
+                link = link.tail.as_ref().unwrap();
+                i -= 1;
+            }
+
+            Self {
+                head: Some(link.clone()),
+                length: self.len() - n
+            }
         }
     }
 
@@ -90,14 +131,7 @@ impl<'a, T> Iterator for ListIterator<'a, T> {
 
 impl<T> FromIterator<T> for List<T> {
     fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
-        let mut list = List::new();
-        let buf = iter.into_iter().collect::<Vec<_>>();
-
-        for i in buf.into_iter().rev() {
-            list = list.cons(i);
-        }
-
-        list
+        Self::from_iter(iter.into_iter())
     }
 }
 

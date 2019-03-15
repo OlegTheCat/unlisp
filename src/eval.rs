@@ -3,11 +3,7 @@ use core::Env;
 use core::LispObject;
 use core::Symbol;
 use error;
-use im::Vector;
-
-fn nth(vec: &Vector<LispObject>, i: usize) -> Option<LispObject> {
-    vec.get(i).map(|o| o.clone())
-}
+use cons::List;
 
 fn syntax_err(message: &str) -> error::SyntaxError {
     error::SyntaxError::new(message.to_string())
@@ -37,62 +33,63 @@ pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<core::Function> {
     env.global_env.as_ref().borrow().macro_env.get(s).map(|v| v.clone())
 }
 
-pub fn call_function_object<'a, 'b>(env: Env, f: &'a core::Function, args: impl Iterator<Item = &'b LispObject>, args_count: usize, eval_args: bool) -> error::GenResult<LispObject> {
+pub fn call_function_object(env: Env, f: &core::Function, args: List<LispObject>, eval_args: bool) -> error::GenResult<LispObject> {
+
+    let args = if eval_args {
+        args.iter().map(|lo| eval(env.clone(), lo)).collect::<Result<List<_>, _>>()?
+    } else {
+        args
+    };
+
     match f {
         core::Function::NativeFunction(native_fn) => {
-            let mut evaled_args = args
-                .map(|lo| if eval_args { eval(env.clone(), lo) } else { Ok(lo.clone()) })
-                .collect::<Result<Vec<_>, _>>()?;
-
-            native_fn.0(env, evaled_args.iter().collect())
+            native_fn.0(env, args)
         },
         core::Function::InterpretedFunction(interpreted_fn) => {
             let has_restarg = interpreted_fn.restarg.is_some();
 
-            if (args_count < interpreted_fn.arglist.len()) || (!has_restarg && interpreted_fn.arglist.len() != args_count) {
+            if (args.len() < interpreted_fn.arglist.len()) || (!has_restarg && interpreted_fn.arglist.len() != args.len()) {
                 let expected = interpreted_fn.arglist.len();
-                let actual = args_count;
-                let mut arglist_as_vec = interpreted_fn
+                let actual = args.len();
+                let mut arglist = interpreted_fn
                     .arglist
                     .iter()
                     .map(|s| LispObject::Symbol(s.clone()))
-                    .collect::<Vector<_>>();
+                    .collect::<List<_>>();
 
-                if let Some(ref restarg) = interpreted_fn.restarg {
-                    arglist_as_vec.push_back(LispObject::Symbol(Symbol::new("&")));
-                    arglist_as_vec.push_back(LispObject::Symbol(restarg.clone()));
-                }
+                // TODO
+                // if let Some(ref restarg) = interpreted_fn.restarg {
+                //     arglist.push_back(LispObject::Symbol(Symbol::new("&")));
+                //     arglist.push_back(LispObject::Symbol(restarg.clone()));
+                // }
 
-                let arglist_as_vec = LispObject::Vector(arglist_as_vec);
+                let arglist = LispObject::List(arglist);
 
                 return Err(Box::new(error::ArityError::new(
                     expected,
                     actual,
-                    format!("(lambda {} ...)", arglist_as_vec),
+                    format!("(lambda {} ...)", arglist),
                 )));
             }
 
-            let mut evaled = args
-                .map(|lo| if eval_args { eval(env.clone(), lo) } else { Ok(lo.clone()) })
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter();
+            let mut args = args.iter();
 
             let mut new_env = env.clone();
-            for (sym, val) in interpreted_fn.arglist.iter().zip(evaled.by_ref()) {
-                new_env.cur_env.sym_env.insert(sym.clone(), val);
+            for (sym, val) in interpreted_fn.arglist.iter().zip(args.by_ref()) {
+                new_env.cur_env.sym_env.insert(sym.clone(), val.clone());
             }
 
             if has_restarg {
-                let restarg = evaled.collect();
+                let restarg = args.map(|lo| lo.clone()).collect();
                 new_env
                     .cur_env
                     .sym_env
-                    .insert(interpreted_fn.restarg.as_ref().unwrap().clone(), LispObject::Vector(restarg));
+                    .insert(interpreted_fn.restarg.as_ref().unwrap().clone(), LispObject::List(restarg));
             }
 
-            let mut result = LispObject::Nil;
-            for form in &interpreted_fn.body {
-                result = eval(new_env.clone(), &form)?;
+            let mut result = LispObject::nil();
+            for form in interpreted_fn.body.iter() {
+                result = eval(new_env.clone(), form)?;
             }
 
             Ok(result)
@@ -101,43 +98,33 @@ pub fn call_function_object<'a, 'b>(env: Env, f: &'a core::Function, args: impl 
 }
 
 fn call_fn(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
-    let mut form = core::to_vector(form)?;
-    let func = core::to_function(&form[0])?;
+    let mut form = core::to_list(form)?;
+    let func = core::to_function(form.ufirst())?;
 
-    let mut args = form.iter();
-    args.next();
-
-    call_function_object(env, func, args, form.len() - 1, true)
+    call_function_object(env, func, form.tail(), true)
 }
 
 fn call_macro(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
-    let mut form = core::to_vector(form)?;
-    let func = core::to_macro(&form[0])?;
+    let mut form = core::to_list(form)?;
+    let func = core::to_macro(form.ufirst())?;
 
-    let mut args = form.iter();
-    args.next();
-
-    let expanded = call_function_object(env.clone(), func, args, form.len() - 1, false)?;
+    let expanded = call_function_object(env.clone(), func, form.tail(), false)?;
     eval(env, &expanded)
 }
 
-fn call_symbol<'a>(env: Env, form: &'a LispObject) -> error::GenResult<LispObject> {
-    let form = core::to_vector(form)?;
-    let mut form_iter = form.into_iter();
-    let sym = core::to_symbol(form_iter.next().unwrap())?;
+fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
+    let form = core::to_list(form)?;
+    let sym = core::to_symbol(form.first().unwrap())?;
+    let args = form.tail();
 
     let spec = env.global_env.as_ref().borrow().special_env.get(sym).map(|f| f.clone());
 
     if let Some(f) = spec {
-        f.0(env.clone(), form_iter.collect())
+        f.0(env.clone(), args)
     } else if let Some(ref f) = lookup_symbol_fn(&env, sym) {
-        let mut args = form.iter();
-        args.next();
-        call_function_object(env.clone(), f, args, form.len() - 1, true)
+        call_function_object(env.clone(), f, args, true)
     } else if let Some(ref f) = lookup_symbol_macro(&env, &sym) {
-        let mut args = form.iter();
-        args.next();
-        let expanded = call_function_object(env.clone(), f, args, form.len() - 1, false)?;
+        let expanded = call_function_object(env.clone(), f, args, false)?;
         eval(env.clone(), &expanded)
     } else {
         Err(Box::new(error::UndefinedSymbol::new(
@@ -149,7 +136,6 @@ fn call_symbol<'a>(env: Env, form: &'a LispObject) -> error::GenResult<LispObjec
 
 pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
     match form {
-        self_eval @ LispObject::Nil => Ok(self_eval.clone()),
         self_eval @ LispObject::T => Ok(self_eval.clone()),
         self_eval @ LispObject::Integer(_) => Ok(self_eval.clone()),
         self_eval @ LispObject::String(_) => Ok(self_eval.clone()),
@@ -158,11 +144,11 @@ pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
         LispObject::Special(_) => Err(Box::new(syntax_err("standalone special"))),
         LispObject::Macro(_) => Err(Box::new(syntax_err("standalone macro"))),
 
-        LispObject::Vector(ref vec) if vec.len() == 0 => Ok(LispObject::Vector(vec.clone())),
+        LispObject::List(ref list) if list.is_empty() => Ok(LispObject::List(list.clone())),
         LispObject::Symbol(s) => {
             lookup_symbol_value(&env, &s).ok_or(Box::new(error::UndefinedSymbol::new(s.name(), false)))
         }
-        LispObject::Vector(ref vec) => match nth(vec, 0).unwrap() {
+        LispObject::List(ref list) => match list.first().unwrap() {
             LispObject::Symbol(_) => call_symbol(env, form),
 
             // LispObject::Fn(_) => call_fn(env, form),
