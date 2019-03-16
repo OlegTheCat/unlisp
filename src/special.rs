@@ -4,8 +4,8 @@ use core::Env;
 use core::LispObject;
 use core::Symbol;
 use error;
-use eval;
 use eval::eval;
+use eval;
 
 fn syntax_err(message: &str) -> error::SyntaxError {
     error::SyntaxError::new(message.to_string())
@@ -180,9 +180,7 @@ fn symbol_function(env: Env, args: List<LispObject>) -> error::GenResult<LispObj
     let mut args = args.iter();
     let arg = args.next().ok_or(syntax_err("no arg in symbol-function"))?;
     let arg = core::to_symbol(arg)?;
-    let f =
-        eval::lookup_symbol_fn(&env, &arg).ok_or(error::UndefinedSymbol::new(arg.name(), true))?;
-
+    let f = eval::lookup_symbol_function(&env, &arg).ok_or(error::UndefinedSymbol::new(arg.name(), true))?;
     Ok(LispObject::Fn(f))
 }
 

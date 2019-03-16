@@ -9,43 +9,28 @@ fn syntax_err(message: &str) -> error::SyntaxError {
     error::SyntaxError::new(message.to_string())
 }
 
-fn lookup_symbol_value(env: &Env, s: &Symbol) -> Option<LispObject> {
-    if let Some(val) = env.cur_env.sym_env.get(s) {
-        return Some(val.clone());
+macro_rules! lookup_symbol {
+    ($env:ident, $lookup_env:ident, $sym:expr) => {
+        {
+            let global = $env.global_env.borrow();
+            $env.cur_env.$lookup_env.get($sym).or_else(|| {
+                global.$lookup_env.get($sym)
+            }).map(|v| v.clone())
+        }
     }
-
-    env.global_env
-        .as_ref()
-        .borrow()
-        .sym_env
-        .get(s)
-        .map(|v| v.clone())
 }
 
-pub fn lookup_symbol_fn(env: &Env, s: &Symbol) -> Option<core::Function> {
-    if let Some(val) = env.cur_env.fn_env.get(s) {
-        return Some(val.clone());
-    }
+pub fn lookup_symbol_value(env: &Env, s: &Symbol) -> Option<LispObject> {
+    lookup_symbol!(env, sym_env, s)
+}
 
-    env.global_env
-        .as_ref()
-        .borrow()
-        .fn_env
-        .get(s)
-        .map(|v| v.clone())
+
+pub fn lookup_symbol_function(env: &Env, s: &Symbol) -> Option<core::Function> {
+    lookup_symbol!(env, fn_env, s)
 }
 
 pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<core::Function> {
-    if let Some(val) = env.cur_env.macro_env.get(s) {
-        return Some(val.clone());
-    }
-
-    env.global_env
-        .as_ref()
-        .borrow()
-        .macro_env
-        .get(s)
-        .map(|v| v.clone())
+    lookup_symbol!(env, macro_env, s)
 }
 
 pub fn call_function_object(
@@ -76,15 +61,14 @@ pub fn call_function_object(
                     .arglist
                     .iter()
                     .map(|s| LispObject::Symbol(s.clone()))
-                    .collect::<List<_>>();
+                    .collect::<Vec<_>>();
 
-                // TODO
-                // if let Some(ref restarg) = interpreted_fn.restarg {
-                //     arglist.push_back(LispObject::Symbol(Symbol::new("&")));
-                //     arglist.push_back(LispObject::Symbol(restarg.clone()));
-                // }
+                if let Some(ref restarg) = interpreted_fn.restarg {
+                    arglist.push(LispObject::Symbol(Symbol::new("&")));
+                    arglist.push(LispObject::Symbol(restarg.clone()));
+                }
 
-                let arglist = LispObject::List(arglist);
+                let arglist = LispObject::List(List::from_rev_iter(arglist.into_iter()));
 
                 return Err(Box::new(error::ArityError::new(
                     expected,
@@ -125,7 +109,6 @@ fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
 
     let spec = env
         .global_env
-        .as_ref()
         .borrow()
         .special_env
         .get(sym)
@@ -133,9 +116,9 @@ fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
 
     if let Some(f) = spec {
         f.0(env.clone(), args)
-    } else if let Some(ref f) = lookup_symbol_fn(&env, sym) {
+    } else if let Some(ref f) = lookup_symbol_function(&env, sym) {
         call_function_object(env.clone(), f, args, true)
-    } else if let Some(ref f) = lookup_symbol_macro(&env, &sym) {
+    } else if let Some(ref f) = lookup_symbol_macro(&env, sym) {
         let expanded = call_function_object(env.clone(), f, args, false)?;
         eval(env.clone(), &expanded)
     } else {
