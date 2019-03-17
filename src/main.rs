@@ -12,11 +12,20 @@ mod core;
 mod error;
 mod eval;
 mod lexer;
+mod macroexpand;
 mod native;
 mod print;
 mod pushback_reader;
 mod reader;
 mod special;
+
+fn macroexpand_and_eval(
+    env: core::Env,
+    form: &core::LispObject,
+) -> error::GenResult<core::LispObject> {
+    let expanded = macroexpand::macroexpand_all(env.clone(), form)?;
+    eval::eval(env, &expanded)
+}
 
 fn eval_stdlib(env: &core::Env) {
     let mut file = fs::File::open("src/stdlib.unl").expect("stdlib file not found");
@@ -25,7 +34,7 @@ fn eval_stdlib(env: &core::Env) {
     loop {
         match reader.read_form() {
             Ok(form) => {
-                eval::eval(env.clone(), &form).expect("error during stdlib eval");
+                macroexpand_and_eval(env.clone(), &form).expect("error during stdlib eval");
             }
             Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
 
@@ -52,7 +61,7 @@ fn repl() {
 
     loop {
         match reader.read_form() {
-            Ok(form) => match eval::eval(env.clone(), &form) {
+            Ok(form) => match macroexpand_and_eval(env.clone(), &form) {
                 Ok(lo) => {
                     println!("{}", lo);
                 }

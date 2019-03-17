@@ -118,9 +118,6 @@ fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
         f.0(env.clone(), args)
     } else if let Some(ref f) = lookup_symbol_function(&env, sym) {
         call_function_object(env.clone(), f, args, true)
-    } else if let Some(ref f) = lookup_symbol_macro(&env, sym) {
-        let expanded = call_function_object(env.clone(), f, args, false)?;
-        eval(env.clone(), &expanded)
     } else {
         Err(Box::new(error::UndefinedSymbol::new(sym.name(), true)))
     }
@@ -133,10 +130,10 @@ pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
         self_eval @ LispObject::String(_) => Ok(self_eval.clone()),
         self_eval @ LispObject::Fn(_) => Ok(self_eval.clone()),
 
-        LispObject::List(ref list) if list.is_empty() => Ok(LispObject::List(list.clone())),
+        LispObject::List(ref list) if list.is_empty() => Ok(LispObject::nil()),
         LispObject::Symbol(s) => lookup_symbol_value(&env, &s)
             .ok_or(Box::new(error::UndefinedSymbol::new(s.name(), false))),
-        LispObject::List(ref list) => match list.first().unwrap() {
+        LispObject::List(ref list) => match list.ufirst() {
             LispObject::Symbol(_) => call_symbol(env, form),
             _ => Err(Box::new(syntax_err("illegal function call"))),
         },

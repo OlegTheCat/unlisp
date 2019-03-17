@@ -11,7 +11,9 @@ fn syntax_err(message: &str) -> error::SyntaxError {
     error::SyntaxError::new(message.to_string())
 }
 
-fn quote_form(_env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
+pub struct ParsedQuote(pub LispObject);
+
+pub fn parse_quote(args: &List<LispObject>) -> error::GenResult<ParsedQuote> {
     if args.len() != 1 {
         return Err(Box::new(error::ArityError::new(
             1,
@@ -20,40 +22,67 @@ fn quote_form(_env: Env, args: List<LispObject>) -> error::GenResult<LispObject>
         )));
     }
 
-    Ok(args.ufirst().clone())
+    Ok(ParsedQuote(args.ufirst().clone()))
 }
 
-fn let_form(env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
-    let mut args = args.iter();
-    let bindings = args.next().ok_or(syntax_err("no bindings in let"))?;
+fn quote_form(_env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
+    Ok(parse_quote(&args)?.0)
+}
+
+pub struct ParsedLet<'a> {
+    pub bindings: Vec<(Symbol, &'a LispObject)>,
+    pub body: List<LispObject>
+}
+
+pub fn parse_let<'a>(args: &'a List<LispObject>) -> error::GenResult<ParsedLet<'a>> {
+    let bindings = args.first().ok_or(syntax_err("no bindings in let"))?;
     let bindings =
         core::to_list(bindings).map_err(|_e| syntax_err("let bindings are not a list"))?;
 
-    let mut new_env = env.clone();
+    let mut collected_bindings = vec![];
 
     for binding in bindings.iter() {
         let binding =
             core::to_list(binding).map_err(|_e| syntax_err("let binding is not a list"))?;
-        let sym = binding.first().ok_or(syntax_err("empty binding clause"))?;
+        let mut binding_iter = binding.iter();
+        let sym = binding_iter.next().ok_or(syntax_err("empty binding clause"))?;
         let sym =
             core::to_symbol(sym).map_err(|_e| syntax_err("not a symbol in binding clause"))?;
 
-        let val = binding.tail();
-        let val = val
-            .first()
-            .ok_or(syntax_err("no value in binding clause"))?;
-        let val = eval(new_env.clone(), val)?;
+        let val_form = binding_iter.next().ok_or(syntax_err("no value in binding clause"))?;
 
-        new_env.cur_env.sym_env.insert(sym.clone(), val);
+        collected_bindings.push((sym.clone(), val_form));
+    }
+
+    Ok(ParsedLet {
+        bindings: collected_bindings,
+        body: args.tail()
+    })
+}
+
+fn let_form(env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
+    let ParsedLet { bindings, body } = parse_let(&args)?;
+
+    let mut new_env = env;
+
+    for (sym, val_form) in bindings {
+        let val = eval(new_env.clone(), val_form)?;
+        new_env.cur_env.sym_env.insert(sym, val);
     }
 
     let mut res = LispObject::nil();
 
-    for form in args {
+    for form in body.iter() {
         res = eval(new_env.clone(), &form)?;
     }
 
     Ok(res)
+}
+
+pub struct ParsedLambda {
+    pub simple_args: List<Symbol>,
+    pub restarg: Option<Symbol>,
+    pub body: List<LispObject>
 }
 
 fn parse_arglist(arglist: Vec<Symbol>) -> error::GenResult<(List<Symbol>, Option<Symbol>)> {
@@ -77,9 +106,9 @@ fn parse_arglist(arglist: Vec<Symbol>) -> error::GenResult<(List<Symbol>, Option
     Ok((simple_args, restarg))
 }
 
-fn lambda_form(_env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
-    let mut args = args.iter();
-    let arglist = args.next().ok_or(syntax_err("no arglist in lambda"))?;
+pub fn parse_lambda(args: &List<LispObject>) -> error::GenResult<ParsedLambda> {
+
+    let arglist = args.first().ok_or(syntax_err("no arglist in lambda"))?;
     let arglist =
         core::to_list(arglist).map_err(|_e| syntax_err("lambda arglist in not a list"))?;
     let arglist = arglist
@@ -93,7 +122,17 @@ fn lambda_form(_env: Env, args: List<LispObject>) -> error::GenResult<LispObject
 
     let (simple_args, restarg) = parse_arglist(arglist)?;
 
-    let body = args.map(|lo| lo.clone()).collect();
+    let body = args.tail();
+
+    Ok(ParsedLambda {
+        simple_args: simple_args,
+        restarg: restarg,
+        body: body
+    })
+}
+
+fn lambda_form(_env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
+    let ParsedLambda { simple_args, restarg, body } = parse_lambda(&args)?;
 
     Ok(LispObject::Fn(core::Function::InterpretedFunction(
         core::InterpretedFn {

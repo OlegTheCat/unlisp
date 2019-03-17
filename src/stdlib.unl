@@ -189,25 +189,14 @@
          (unq then)
          (unq else)))))
 
-(defmacro when-let (binding & body)
-  (qquote
-   (if-let (unq binding)
-           (let ()
-             (unqs body))
-           nil)))
+(defmacro when-let (binding & body) (qquote (if-let (unq binding) (let () (unqs body)) nil)))
 
-(defmacro if-it (cond then else)
-  (qquote
-   (if-let (it (unq cond))
-           (unq then)
-           (unq else))))
+(defmacro if-it (cond then else) (qquote (if-let (it (unq cond)) (unq then) (unq else))))
 
 (defun every? (pred coll)
-  (if (emptyp coll)
-      t
-      (if (funcall pred (first coll))
-          (every? pred (rest coll))
-          nil)))
+  (or (emptyp coll)
+      (and (funcall pred (first coll))
+           (every? pred (rest coll)))))
 
 (defun mapcar-single (f xs)
   (if (emptyp xs)
@@ -224,7 +213,7 @@
               (tails (mapcar-single (symbol-function rest)
                                     lists)))
           (cons (apply f heads)
-                (apply (symbol-function mapcar) f tails)))
+                (apply (symf mapcar) f tails)))
         ())))
 
 (defmacro dbgp (str-prefix & forms)

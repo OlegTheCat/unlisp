@@ -70,7 +70,7 @@ impl<T> List<T> {
         self.first_rc().map(|rc| rc.as_ref())
     }
 
-    fn first_rc(&self) -> Option<&Rc<T>> {
+    pub fn first_rc(&self) -> Option<&Rc<T>> {
         self.head.as_ref().map(|cons_rc| &cons_rc.elem)
     }
 
