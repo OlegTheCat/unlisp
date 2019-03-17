@@ -129,7 +129,8 @@
      (let ((sym (first binding))
            (val (first (rest binding))))
        (qquote
-        ((lambda ((unq sym))
+        (funcall
+         (lambda ((unq sym))
            (unq acc))
          (unq val)))))
    (qquote (let () (unqs body)))
