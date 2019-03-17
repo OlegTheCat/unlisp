@@ -200,6 +200,24 @@ define_native_fn! {
     }
 }
 
+define_native_fn! {
+    native_macroexpand(env, arg: identity_converter) -> identity {
+        match arg {
+            LispObject::List(ref list) if !list.is_empty() => {
+                match list.ufirst() {
+                    LispObject::Symbol(s) => {
+                        eval::lookup_symbol_macro(&env, s)
+                            .map_or_else(|| Ok(arg.clone()),
+                                         |macro_fn| eval::call_function_object(env, &macro_fn, list.tail(), false))?
+                    }
+                    _ => arg.clone()
+                }
+            }
+            _ => arg.clone()
+        }
+    }
+}
+
 pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
     let mut set = |name: &str, f| {
         global_env.fn_env.insert(
@@ -222,4 +240,5 @@ pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
     set("print", native_print);
     set("println", native_println);
     set("stdout-write", native_stdout_write);
+    set("macroexpand-1", native_macroexpand);
 }

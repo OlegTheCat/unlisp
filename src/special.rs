@@ -192,22 +192,6 @@ fn if_form(env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
     }
 }
 
-// fn macroexpand_1(env: Env, form: LispObject) -> error::GenResult<LispObject> {
-//     let not_a_macro = || syntax_err("arg to macroexpand1 must be a macro call");
-
-//     let form = core::to_vector(form)?;
-//     let arg_form = nth(form, 1).ok_or(syntax_err("no arg in macroexpand1"))?;
-//     let mut arg_form = core::to_vector(arg_form).map_err(|_e| not_a_macro())?;
-
-//     let macro_fn = core::to_symbol(nth(arg_form.clone(), 0).ok_or(not_a_macro())?)
-//         .map_err(|_e| not_a_macro())?;
-//     let macro_fn = eval::lookup_symbol_macro(&env, &macro_fn).ok_or(not_a_macro())?;
-
-//     arg_form.pop_front();
-
-//     eval::call_function_object(env, macro_fn, arg_form, false)
-// }
-
 fn raise_error(_env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
     let mut args = args.iter();
     let arg_form = args.next().ok_or(syntax_err("no arg in error"))?;
@@ -236,7 +220,6 @@ pub fn prepare_specials(global_env: &mut core::GlobalEnvFrame) {
     set("set-fn", set_fn);
     set("set-macro-fn", set_macro_fn);
     set("lambda", lambda_form);
-    // set("macroexpand-1", macroexpand_1);
     set("error", raise_error);
     set("symbol-function", symbol_function);
 }
