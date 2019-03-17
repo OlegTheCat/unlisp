@@ -10,20 +10,19 @@ fn syntax_err(message: &str) -> error::SyntaxError {
 }
 
 macro_rules! lookup_symbol {
-    ($env:ident, $lookup_env:ident, $sym:expr) => {
-        {
-            let global = $env.global_env.borrow();
-            $env.cur_env.$lookup_env.get($sym).or_else(|| {
-                global.$lookup_env.get($sym)
-            }).map(|v| v.clone())
-        }
-    }
+    ($env:ident, $lookup_env:ident, $sym:expr) => {{
+        let global = $env.global_env.borrow();
+        $env.cur_env
+            .$lookup_env
+            .get($sym)
+            .or_else(|| global.$lookup_env.get($sym))
+            .map(|v| v.clone())
+    }};
 }
 
 pub fn lookup_symbol_value(env: &Env, s: &Symbol) -> Option<LispObject> {
     lookup_symbol!(env, sym_env, s)
 }
-
 
 pub fn lookup_symbol_function(env: &Env, s: &Symbol) -> Option<core::Function> {
     lookup_symbol!(env, fn_env, s)
