@@ -67,7 +67,7 @@ pub fn call_function_object(
                     arglist.push(LispObject::Symbol(restarg.clone()));
                 }
 
-                let arglist = LispObject::List(List::from_rev_iter(arglist.into_iter()));
+                let arglist = LispObject::List(List::from_rev_iter(arglist));
 
                 return Err(Box::new(error::ArityError::new(
                     expected,

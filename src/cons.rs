@@ -24,20 +24,22 @@ impl<T> List<T> {
         }
     }
 
-    pub fn from_iter<I: Iterator<Item = T>>(iter: I) -> Self {
-        let mut list = List::empty();
-        let buf = iter.into_iter().collect::<Vec<_>>();
+    pub fn from_iter<I, II>(iter: II) -> Self
+    where I: Iterator<Item = T>,
+          II: IntoIterator<Item = T, IntoIter = I>
+    {
+        let buf: Vec<_> = iter.into_iter().collect();
 
-        for i in buf.into_iter().rev() {
-            list = list.cons(i);
-        }
-
-        list
+        Self::from_rev_iter(buf)
     }
 
-    pub fn from_rev_iter<I: Iterator<Item = T> + DoubleEndedIterator>(iter: I) -> Self {
+    pub fn from_rev_iter<I, II>(iter: II) -> Self
+    where
+        I: Iterator<Item = T> + DoubleEndedIterator,
+        II: IntoIterator<Item = T, IntoIter = I>,
+    {
         let mut list = List::empty();
-        for i in iter.rev() {
+        for i in iter.into_iter().rev() {
             list = list.cons(i);
         }
 

@@ -12,7 +12,7 @@ fn macroexpand_list(env: &Env, list: &List<LispObject>) -> error::GenResult<List
         .map(|lo| macroexpand_all(env.clone(), lo))
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(List::from_rev_iter(expanded.into_iter()))
+    Ok(List::from_rev_iter(expanded))
 }
 
 fn macroexpand_into_list(env: &Env, list: &List<LispObject>) -> error::GenResult<LispObject> {

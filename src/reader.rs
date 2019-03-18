@@ -3,8 +3,8 @@ use core::Symbol;
 use std::io;
 use std::io::Read;
 
-use super::lexer::Lexer;
-use super::lexer::Token;
+use lexer::Lexer;
+use lexer::Token;
 use cons::List;
 
 pub struct Reader<'a, T: Read + 'a> {
@@ -51,7 +51,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
             tok = self.lexer.next_token()?;
         }
 
-        Ok(LispObject::List(List::from_rev_iter(vec.into_iter())))
+        Ok(LispObject::List(List::from_rev_iter(vec)))
     }
 
     pub fn read_form(&mut self) -> io::Result<LispObject> {
@@ -69,4 +69,80 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
 
         Ok(form)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lexer::is_eof;
+    use cons::List;
+
+    #[test]
+    fn test_integer_literal() {
+        let mut input = "1 12 1000 2019".as_bytes();
+        let mut reader = Reader::create(&mut input);
+
+        assert_eq!(reader.read_form().unwrap(), LispObject::Integer(1));
+        assert_eq!(reader.read_form().unwrap(), LispObject::Integer(12));
+        assert_eq!(reader.read_form().unwrap(), LispObject::Integer(1000));
+        assert_eq!(reader.read_form().unwrap(), LispObject::Integer(2019));
+    }
+
+    #[test]
+    fn test_string_literal() {
+        let mut input = "\"\" \"foo\" \"bar\"".as_bytes();
+        let mut reader = Reader::create(&mut input);
+
+        assert_eq!(reader.read_form().unwrap(), LispObject::String("".to_string()));
+        assert_eq!(reader.read_form().unwrap(), LispObject::String("foo".to_string()));
+        assert_eq!(reader.read_form().unwrap(), LispObject::String("bar".to_string()));
+    }
+
+    #[test]
+    fn test_symbol() {
+        let mut input = "x foo bar*".as_bytes();
+        let mut reader = Reader::create(&mut input);
+
+        assert_eq!(reader.read_form().unwrap(), LispObject::Symbol(Symbol::new("x")));
+        assert_eq!(reader.read_form().unwrap(), LispObject::Symbol(Symbol::new("foo")));
+        assert_eq!(reader.read_form().unwrap(), LispObject::Symbol(Symbol::new("bar*")));
+    }
+
+    #[test]
+    fn test_list() {
+        let mut input = "() (foo bar) (foo (bar baz) quux)".as_bytes();
+        let mut reader = Reader::create(&mut input);
+
+        let sym = |x| LispObject::Symbol(Symbol::new(x));
+
+        assert_eq!(reader.read_form().unwrap(), LispObject::nil());
+        assert_eq!(reader.read_form().unwrap(),
+                   LispObject::List(List::from_rev_iter(vec![sym("foo"), sym("bar")])));
+
+        assert_eq!(reader.read_form().unwrap(),
+                   LispObject::List(
+                       List::from_rev_iter(vec![sym("foo"),
+                                                    LispObject::List(
+                                                        List::from_rev_iter(vec![sym("bar"),
+                                                                                 sym("baz")])),
+                                                sym("quux")])));
+    }
+
+    #[test]
+    fn test_nil_t() {
+        let mut input = "nil t".as_bytes();
+        let mut reader = Reader::create(&mut input);
+
+        assert_eq!(reader.read_form().unwrap(), LispObject::nil());
+        assert_eq!(reader.read_form().unwrap(), LispObject::T);
+    }
+
+    #[test]
+    fn test_incomplete_list() {
+        let mut input = "(foo".as_bytes();
+        let mut reader = Reader::create(&mut input);
+        assert!(is_eof(&reader.read_form()));
+    }
+
+    //TODO: tests on unbalanced pars
 }

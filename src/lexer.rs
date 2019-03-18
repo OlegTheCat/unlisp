@@ -13,7 +13,7 @@ pub enum Token {
     Unexpected,
 }
 
-fn is_eof<T>(result: &io::Result<T>) -> bool {
+pub fn is_eof<T>(result: &io::Result<T>) -> bool {
     match result {
         Err(e) => e.kind() == io::ErrorKind::UnexpectedEof,
         _ => false
