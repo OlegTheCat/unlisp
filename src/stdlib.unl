@@ -183,16 +183,24 @@
 (defun second (list)
   (first (rest list)))
 
-(defmacro if-let (binding then else)
+(defmacro if-let (binding then & else)
   (qquote
    (let ((unq binding))
      (if (unq (first binding))
          (unq then)
-         (unq else)))))
+         (unqs else)))))
 
-(defmacro when-let (binding & body) (qquote (if-let (unq binding) (let () (unqs body)) nil)))
+(defmacro when-let (binding & body)
+  (qquote
+   (if-let (unq binding)
+           (let () (unqs body))
+           nil)))
 
-(defmacro if-it (cond then else) (qquote (if-let (it (unq cond)) (unq then) (unq else))))
+(defmacro if-it (cond then & else)
+  (qquote
+   (if-let (it (unq cond))
+           (unq then)
+           (unqs else))))
 
 (defun every? (pred coll)
   (or (emptyp coll)
