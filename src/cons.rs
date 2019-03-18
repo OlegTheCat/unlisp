@@ -25,8 +25,9 @@ impl<T> List<T> {
     }
 
     pub fn from_iter<I, II>(iter: II) -> Self
-    where I: Iterator<Item = T>,
-          II: IntoIterator<Item = T, IntoIter = I>
+    where
+        I: Iterator<Item = T>,
+        II: IntoIterator<Item = T, IntoIter = I>,
     {
         let buf: Vec<_> = iter.into_iter().collect();
 
@@ -38,12 +39,9 @@ impl<T> List<T> {
         I: Iterator<Item = T> + DoubleEndedIterator,
         II: IntoIterator<Item = T, IntoIter = I>,
     {
-        let mut list = List::empty();
-        for i in iter.into_iter().rev() {
-            list = list.cons(i);
-        }
-
-        list
+        iter.into_iter()
+            .rev()
+            .fold(List::empty(), |acc, x| acc.cons(x))
     }
 
     pub fn len(&self) -> usize {
@@ -146,13 +144,10 @@ impl<T> Iterator for LinkIterator<T> {
     type Item = Rc<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next.is_none() {
-            None
-        } else {
-            let cons_rc = self.next.take().unwrap();
+        self.next.take().map(|cons_rc| {
             self.next = cons_rc.tail.clone();
-            Some(cons_rc.elem.clone())
-        }
+            cons_rc.elem.clone()
+        })
     }
 }
 
@@ -212,3 +207,74 @@ impl<T: PartialEq> PartialEq for List<T> {
 }
 
 impl<T: Eq> Eq for List<T> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_collect() {
+        let empty: Vec<usize> = vec![];
+        let v = vec![1, 2, 3];
+
+        assert_eq!(empty.into_iter().collect::<List<_>>(), List::empty());
+        assert_eq!(
+            v.into_iter().collect::<List<_>>(),
+            List::empty().cons(3).cons(2).cons(1)
+        );
+    }
+
+    #[test]
+    fn test_cons() {
+        let mut list = List::empty();
+
+        list = list.cons(1);
+        list = list.cons(2);
+        list = list.cons(3);
+
+        assert_eq!(list.len(), 3);
+        assert_eq!(list, List::from_iter(vec![3, 2, 1]));
+    }
+
+    #[test]
+    fn test_from_rev_iter() {
+        let v = vec![1, 2, 3];
+
+        assert_eq!(List::from_iter(v.clone()), List::from_rev_iter(v));
+    }
+
+    #[test]
+    fn test_tail() {
+        let list = List::from_iter(0..5);
+
+        assert_eq!(list.tail(), List::from_iter(1..5));
+        assert_eq!(list.tail().len(), 4);
+
+        assert_eq!(list.tailn(3), List::from_iter(3..5));
+        assert_eq!(list.tailn(3).len(), 2);
+
+        assert_eq!(list.tailn(10), List::empty());
+        assert_eq!(list.tailn(10).len(), 0);
+
+        assert_eq!(List::<usize>::empty().tail(), List::empty());
+    }
+
+    #[test]
+    fn test_iter() {
+        let list = List::from_iter(0..5);
+
+        for (x, y) in list.iter().zip(0..5) {
+            assert_eq!(*x, y);
+        }
+    }
+
+    #[test]
+    fn test_rc_iter() {
+        let list = List::from_iter(0..5);
+
+        for (x, y) in list.rc_iter().zip(0..5) {
+            assert_eq!(*x, y);
+        }
+    }
+
+}
