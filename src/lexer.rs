@@ -17,10 +17,6 @@ pub struct Lexer<'a, T: Read + 'a> {
     pbr: PushbackReader<'a, T>,
 }
 
-fn valid_symbol_char(c: char) -> bool {
-    c.is_alphanumeric() || c == '&' || c == '*' || c == '-' || c == '?'
-}
-
 impl<'a, T: Read> Lexer<'a, T> {
     pub fn create(r: &'a mut T) -> Lexer<'a, T> {
         Lexer {
@@ -28,13 +24,14 @@ impl<'a, T: Read> Lexer<'a, T> {
         }
     }
 
-    fn next_char(&mut self) -> io::Result<Option<char>> {
+    fn valid_symbol_char(c: char) -> bool {
+        c.is_alphanumeric() || c == '&' || c == '*' || c == '-' || c == '?'
+    }
+
+    fn next_char(&mut self) -> io::Result<char> {
         let mut one_byte: [u8; 1] = [0];
-        match self.pbr.read_exact(&mut one_byte) {
-            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => Ok(None),
-            Err(e) => Err(e),
-            Ok(_) => Ok(Some(one_byte[0] as char)),
-        }
+        self.pbr.read_exact(&mut one_byte)?;
+        Ok(one_byte[0] as char)
     }
 
     fn unread_char(&mut self, c: char) {
@@ -45,15 +42,8 @@ impl<'a, T: Read> Lexer<'a, T> {
         let mut buf = Vec::new();
         loop {
             let c = self.next_char()?;
-            if c.is_none() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "eof while reading string literal",
-                ));
-            }
 
             // TODO: handle escaping
-            let c = c.unwrap();
             if c == '"' {
                 break;
             }
@@ -67,11 +57,7 @@ impl<'a, T: Read> Lexer<'a, T> {
         let mut buf = Vec::new();
         loop {
             let c = self.next_char()?;
-            if c.is_none() {
-                break;
-            }
 
-            let c = c.unwrap();
             if c.is_numeric() {
                 buf.push(c);
             } else {
@@ -88,12 +74,8 @@ impl<'a, T: Read> Lexer<'a, T> {
         let mut buf = Vec::new();
         loop {
             let c = self.next_char()?;
-            if c.is_none() {
-                break;
-            }
 
-            let c = c.unwrap();
-            if valid_symbol_char(c) {
+            if Self::valid_symbol_char(c) {
                 buf.push(c);
             } else {
                 self.unread_char(c);
@@ -106,20 +88,15 @@ impl<'a, T: Read> Lexer<'a, T> {
 
     fn skip_line(&mut self) -> io::Result<()> {
         let mut next_char = self.next_char()?;
-        while next_char.is_some() && next_char.unwrap() != '\n' {
+        while next_char != '\n' {
             next_char = self.next_char()?;
         }
 
         Ok(())
     }
 
-    pub fn next_token(&mut self) -> io::Result<Option<Token>> {
+    pub fn next_token(&mut self) -> io::Result<Token> {
         let c = self.next_char()?;
-        if c.is_none() {
-            return Ok(None);
-        }
-
-        let c = c.unwrap();
 
         if c.is_whitespace() {
             return self.next_token();
@@ -138,7 +115,7 @@ impl<'a, T: Read> Lexer<'a, T> {
                 Token::IntegerLiteral(self.read_integer_literal()?)
             }
 
-            c if valid_symbol_char(c) => {
+            c if Self::valid_symbol_char(c) => {
                 self.unread_char(c);
                 Token::Symbol(self.read_symbol()?)
             }
@@ -147,6 +124,6 @@ impl<'a, T: Read> Lexer<'a, T> {
             _ => Token::Unexpected,
         };
 
-        Ok(Some(tok))
+        Ok(tok)
     }
 }

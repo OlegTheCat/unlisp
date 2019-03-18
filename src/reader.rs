@@ -18,23 +18,6 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         }
     }
 
-    fn eof(&self) -> io::Result<Token> {
-        Err(io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "eof while retrieving token",
-        ))
-    }
-
-    fn read_tok_or_eof(&mut self) -> io::Result<Token> {
-        let tok = self.lexer.next_token()?;
-
-        if tok.is_none() {
-            return self.eof();
-        }
-
-        Ok(tok.unwrap())
-    }
-
     fn tok_to_trivial_form(&self, tok: &Token) -> Option<LispObject> {
         match tok {
             Token::Symbol(s) if s == "nil" => Some(LispObject::List(List::empty())),
@@ -49,7 +32,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
     fn read_list_form(&mut self) -> io::Result<LispObject> {
         let mut vec = Vec::new();
 
-        let mut tok = self.read_tok_or_eof()?;
+        let mut tok = self.lexer.next_token()?;
 
         while tok != Token::RightPar {
             let form;
@@ -65,14 +48,14 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
             }
 
             vec.push(form);
-            tok = self.read_tok_or_eof()?;
+            tok = self.lexer.next_token()?;
         }
 
         Ok(LispObject::List(List::from_rev_iter(vec.into_iter())))
     }
 
     pub fn read_form(&mut self) -> io::Result<LispObject> {
-        let tok = self.read_tok_or_eof()?;
+        let tok = self.lexer.next_token()?;
 
         let trivial_form = self.tok_to_trivial_form(&tok);
         let form = match trivial_form {
