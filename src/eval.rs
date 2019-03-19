@@ -1,9 +1,9 @@
-use cons::List;
-use core;
-use core::Env;
-use core::LispObject;
-use core::Symbol;
-use error;
+use crate::cons::List;
+use crate::core;
+use crate::core::Env;
+use crate::core::LispObject;
+use crate::core::Symbol;
+use crate::error;
 
 fn syntax_err(message: &str) -> error::SyntaxError {
     error::SyntaxError::new(message.to_string())

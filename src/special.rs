@@ -1,11 +1,11 @@
-use cons::List;
-use core;
-use core::Env;
-use core::LispObject;
-use core::Symbol;
-use error;
-use eval;
-use eval::eval;
+use crate::cons::List;
+use crate::core;
+use crate::core::Env;
+use crate::core::LispObject;
+use crate::core::Symbol;
+use crate::error;
+use crate::eval;
+use crate::eval::eval;
 
 fn syntax_err(message: &str) -> error::SyntaxError {
     error::SyntaxError::new(message.to_string())
@@ -235,10 +235,10 @@ pub fn prepare_specials(global_env: &mut core::GlobalEnvFrame) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ops::DerefMut;
-    use macroexpand::macroexpand_all;
-    use reader::Reader;
+    use crate::macroexpand::macroexpand_all;
+    use crate::reader::Reader;
     use std::io;
+    use std::ops::DerefMut;
 
     fn eval(s: impl Into<String>) -> error::GenResult<LispObject> {
         let env = Env::new();
@@ -255,7 +255,7 @@ mod tests {
                 }
 
                 Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
-                Err(e) => return Err(Box::new(e))
+                Err(e) => return Err(Box::new(e)),
             }
         }
 
@@ -272,7 +272,10 @@ mod tests {
 
     #[test]
     fn test_quote() {
-        assert!(eval("(quote)").unwrap_err().downcast::<error::ArityError>().is_ok());
+        assert!(eval("(quote)")
+            .unwrap_err()
+            .downcast::<error::ArityError>()
+            .is_ok());
 
         assert_eq!(eval("(quote 1)").unwrap(), read("1"));
         assert_eq!(eval("(quote \"foo\")").unwrap(), read("\"foo\""));
@@ -281,8 +284,14 @@ mod tests {
 
     #[test]
     fn test_if() {
-        assert!(eval("(if)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(if t)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
+        assert!(eval("(if)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(if t)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
 
         assert_eq!(eval("(if t 1 2)").unwrap(), read("1"));
         assert_eq!(eval("(if nil 1 2)").unwrap(), read("2"));
@@ -293,9 +302,18 @@ mod tests {
 
     #[test]
     fn test_lambda_syntax() {
-        assert!(eval("(lambda)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(lambda 1)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(lambda (1))").unwrap_err().downcast::<error::SyntaxError>().is_ok());
+        assert!(eval("(lambda)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(lambda 1)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(lambda (1))")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
 
         // lambda behavior is tested in test_set_fn
         assert!(core::to_function(&eval("(lambda (x) x)").unwrap()).is_ok());
@@ -303,66 +321,165 @@ mod tests {
 
     #[test]
     fn test_set_fn() {
-        assert!(eval("(set-fn)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(set-fn 1)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(set-fn foo)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(set-fn foo 2)").unwrap_err().downcast::<error::CastError>().is_ok());
+        assert!(eval("(set-fn)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(set-fn 1)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(set-fn foo)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(set-fn foo 2)")
+            .unwrap_err()
+            .downcast::<error::CastError>()
+            .is_ok());
 
-        assert_eq!(eval("(set-fn x (lambda () (quote x))) (x)").unwrap(), read("x"));
-        assert_eq!(eval("(set-fn x (lambda (y) (if y 1 2))) (x t)").unwrap(), read("1"));
-        assert_eq!(eval("(set-fn x (lambda (y) (if y 1 2))) (x nil)").unwrap(), read("2"));
+        assert_eq!(
+            eval("(set-fn x (lambda () (quote x))) (x)").unwrap(),
+            read("x")
+        );
+        assert_eq!(
+            eval("(set-fn x (lambda (y) (if y 1 2))) (x t)").unwrap(),
+            read("1")
+        );
+        assert_eq!(
+            eval("(set-fn x (lambda (y) (if y 1 2))) (x nil)").unwrap(),
+            read("2")
+        );
     }
 
     #[test]
     fn test_let() {
-        assert!(eval("(let)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(let 1)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(let (x))").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(let ((1 1)))").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-
+        assert!(eval("(let)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(let 1)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(let (x))")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(let ((1 1)))")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
 
         assert_eq!(eval("(let ())").unwrap(), read("nil"));
         assert_eq!(eval("(let ((x 1)) x)").unwrap(), read("1"));
         assert_eq!(eval("(let ((x 1) (y (if x 2 3))) y)").unwrap(), read("2"));
         assert_eq!(eval("(let ((x nil) (y (if x 2 3))) y)").unwrap(), read("3"));
-        assert_eq!(eval("(let ((x nil) (y (let ((x t)) (if x 2 3)))) y)").unwrap(), read("2"));
-
+        assert_eq!(
+            eval("(let ((x nil) (y (let ((x t)) (if x 2 3)))) y)").unwrap(),
+            read("2")
+        );
     }
 
     #[test]
     fn test_set_macro_fn() {
-        assert!(eval("(set-macro-fn)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(set-macro-fn 1)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(set-macro-fn foo)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(set-macro-fn foo 2)").unwrap_err().downcast::<error::CastError>().is_ok());
+        assert!(eval("(set-macro-fn)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(set-macro-fn 1)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(set-macro-fn foo)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(set-macro-fn foo 2)")
+            .unwrap_err()
+            .downcast::<error::CastError>()
+            .is_ok());
 
-        assert_eq!(eval("(set-macro-fn x (lambda () 1)) (x)").unwrap(), read("1"));
-        assert_eq!(eval("(set-macro-fn x (lambda () (quote (let ((x 1)) x)))) (x)").unwrap(), read("1"));
-        assert_eq!(eval("(set-macro-fn x (lambda (y) (if y (quote (let ((x 1)) x))
-                                                         (quote (let ((x 2)) x))))) (x t)").unwrap(), read("1"));
-        assert_eq!(eval("(set-macro-fn x (lambda (y) (if y (quote (let ((x 1)) x))
-                                                         (quote (let ((x 2)) x))))) (x nil)").unwrap(), read("2"));
+        assert_eq!(
+            eval("(set-macro-fn x (lambda () 1)) (x)").unwrap(),
+            read("1")
+        );
+        assert_eq!(
+            eval("(set-macro-fn x (lambda () (quote (let ((x 1)) x)))) (x)").unwrap(),
+            read("1")
+        );
+        assert_eq!(
+            eval(
+                "(set-macro-fn x (lambda (y)
+                                   (if y
+                                       (quote (let ((x 1)) x))
+                                       (quote (let ((x 2)) x)))))
+                 (x t)"
+            )
+            .unwrap(),
+            read("1")
+        );
+        assert_eq!(
+            eval(
+                "(set-macro-fn x (lambda (y)
+                                   (if y
+                                       (quote (let ((x 1)) x))
+                                       (quote (let ((x 2)) x)))))
+                 (x nil)"
+            )
+            .unwrap(),
+            read("2")
+        );
     }
 
     #[test]
     fn test_symbol_function() {
-        assert!(eval("(symbol-function)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(symbol-function 1)").unwrap_err().downcast::<error::CastError>().is_ok());
+        assert!(eval("(symbol-function)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(symbol-function 1)")
+            .unwrap_err()
+            .downcast::<error::CastError>()
+            .is_ok());
 
-        assert!(core::to_function(&eval("(set-fn foo (lambda (x) x)) (symbol-function foo)").unwrap()).is_ok());
-        assert_eq!(eval("(set-fn foo (lambda (x) x)) (set-fn bar (symbol-function foo)) (bar 1)").unwrap(), read("1"));
+        assert!(core::to_function(
+            &eval("(set-fn foo (lambda (x) x)) (symbol-function foo)").unwrap()
+        )
+        .is_ok());
+        assert_eq!(
+            eval("(set-fn foo (lambda (x) x)) (set-fn bar (symbol-function foo)) (bar 1)").unwrap(),
+            read("1")
+        );
     }
 
     #[test]
     fn test_error() {
-        assert!(eval("(error)").unwrap_err().downcast::<error::SyntaxError>().is_ok());
-        assert!(eval("(error 1)").unwrap_err().downcast::<error::CastError>().is_ok());
+        assert!(eval("(error)")
+            .unwrap_err()
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(eval("(error 1)")
+            .unwrap_err()
+            .downcast::<error::CastError>()
+            .is_ok());
 
-        assert!(eval("(error \"foo\")").unwrap_err().downcast::<error::GenericError>().is_ok());
+        assert!(eval("(error \"foo\")")
+            .unwrap_err()
+            .downcast::<error::GenericError>()
+            .is_ok());
     }
 
     #[test]
     fn test_higher_order_funcs() {
-        assert_eq!(eval("(set-fn ho (lambda (f) (set-fn f f) (f 5))) (set-fn foo (lambda (x) x)) (ho (symbol-function foo))").unwrap(), read("5"));
+        assert_eq!(
+            eval(
+                "(set-fn ho (lambda (f) (set-fn f f) (f 5)))
+                 (set-fn foo (lambda (x) x))
+                 (ho (symbol-function foo))"
+            )
+            .unwrap(),
+            read("5")
+        );
     }
 }

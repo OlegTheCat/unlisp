@@ -1,9 +1,9 @@
-use cons::List;
-use core;
-use core::LispObject;
-use core::Symbol;
-use error;
-use eval;
+use crate::cons::List;
+use crate::core;
+use crate::core::LispObject;
+use crate::core::Symbol;
+use crate::error;
+use crate::eval;
 use std::io::Write;
 
 fn identity_converter(v: &LispObject) -> error::GenResult<&LispObject> {

@@ -1,10 +1,10 @@
-use cons::List;
-use core::Env;
-use core::LispObject;
-use core::Symbol;
-use error;
-use eval;
-use special;
+use crate::cons::List;
+use crate::core::Env;
+use crate::core::LispObject;
+use crate::core::Symbol;
+use crate::error;
+use crate::eval;
+use crate::special;
 
 fn macroexpand_list(env: &Env, list: &List<LispObject>) -> error::GenResult<List<LispObject>> {
     let expanded = list

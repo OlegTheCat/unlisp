@@ -1,5 +1,5 @@
-use cons::List;
-use error;
+use crate::cons::List;
+use crate::error;
 use im::HashMap;
 use std::cell::RefCell;
 use std::fmt;

@@ -1,7 +1,7 @@
 use std::io;
 use std::io::Read;
 
-use pushback_reader::PushbackReader;
+use crate::pushback_reader::PushbackReader;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
@@ -16,7 +16,7 @@ pub enum Token {
 pub fn is_eof<T>(result: &io::Result<T>) -> bool {
     match result {
         Err(e) => e.kind() == io::ErrorKind::UnexpectedEof,
-        _ => false
+        _ => false,
     }
 }
 
@@ -167,9 +167,18 @@ mod tests {
         let mut input = "\"\" \"foo\" \"bar\"".as_bytes();
         let mut lexer = Lexer::create(&mut input);
 
-        assert_eq!(lexer.next_token().unwrap(), Token::StringLiteral("".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::StringLiteral("foo".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::StringLiteral("bar".to_string()));
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::StringLiteral("".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::StringLiteral("foo".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::StringLiteral("bar".to_string())
+        );
     }
 
     #[test]
@@ -186,8 +195,14 @@ mod tests {
         let mut lexer = Lexer::create(&mut input);
 
         assert_eq!(lexer.next_token().unwrap(), Token::Symbol("x".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::Symbol("foo".to_string()));
-        assert_eq!(lexer.next_token().unwrap(), Token::Symbol("bar*".to_string()));
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::Symbol("foo".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::Symbol("bar*".to_string())
+        );
     }
 
     #[test]
@@ -205,7 +220,10 @@ mod tests {
         let mut input = ";; this is comment \n foo".as_bytes();
         let mut lexer = Lexer::create(&mut input);
 
-        assert_eq!(lexer.next_token().unwrap(), Token::Symbol("foo".to_string()));
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::Symbol("foo".to_string())
+        );
     }
 
 }
