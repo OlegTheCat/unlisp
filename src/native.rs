@@ -55,8 +55,6 @@ macro_rules! define_native_fn {
                                                stringify!($id).to_string())));
                 }
 
-            #[allow(unused_mut)]
-
             $( #[allow(unused_mut)] let mut $arg = $converter(args.next().unwrap())?; )*
 
             let mut $vararg: List<_> = args
@@ -158,6 +156,19 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    native_lt(_env, x: core::to_i64, y: core::to_i64) -> identity {
+        native_bool_to_lisp_bool(x < y)
+    }
+}
+
+define_native_fn! {
+    native_gt(_env, x: core::to_i64, y: core::to_i64) -> identity {
+        native_bool_to_lisp_bool(x > y)
+    }
+}
+
+
+define_native_fn! {
     native_equal(_env, x: identity_converter, y: identity_converter) -> identity {
         native_bool_to_lisp_bool(*x == *y)
     }
@@ -227,18 +238,24 @@ pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
     };
 
     set("cons", native_cons);
-    set("apply", native_apply);
-    set("add", native_add);
-    set("sub", native_sub);
-    set("mul", native_mul);
-    set("equal", native_equal);
     set("first", native_first);
     set("rest", native_rest);
+    set("equal", native_equal);
+    set("apply", native_apply);
+
+    set("+", native_add);
+    set("-", native_sub);
+    set("*", native_mul);
+    set("<", native_lt);
+    set(">", native_gt);
+
     set("listp", native_listp);
     set("emptyp", native_emptyp);
     set("symbolp", native_symbolp);
+
     set("print", native_print);
     set("println", native_println);
     set("stdout-write", native_stdout_write);
+
     set("macroexpand-1", native_macroexpand);
 }
