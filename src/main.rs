@@ -1,6 +1,4 @@
 use std::io;
-// use std::io::BufRead;
-use std::fs;
 use std::io::Write;
 use std::ops::DerefMut;
 use std::thread;
@@ -18,30 +16,11 @@ mod print;
 mod pushback_reader;
 mod reader;
 mod special;
+mod common;
+#[cfg(test)]
+mod test_utils;
 
-fn macroexpand_and_eval(
-    env: core::Env,
-    form: &core::LispObject,
-) -> error::GenResult<core::LispObject> {
-    let expanded = macroexpand::macroexpand_all(env.clone(), form)?;
-    eval::eval(env, &expanded)
-}
-
-fn eval_stdlib(env: &core::Env) {
-    let mut file = fs::File::open("src/stdlib.unl").expect("stdlib file not found");
-
-    let mut reader = reader::Reader::create(&mut file);
-    loop {
-        match reader.read_form() {
-            Ok(form) => {
-                macroexpand_and_eval(env.clone(), &form).expect("error during stdlib eval");
-            }
-            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
-
-            Err(ref e) => panic!("Unexpected error during stdlib eval: {}", e),
-        }
-    }
-}
+use crate::common::*;
 
 fn repl() {
     let mut stdin = io::stdin();
