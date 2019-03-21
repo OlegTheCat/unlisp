@@ -34,9 +34,9 @@ impl<'a, T: Read> Lexer<'a, T> {
     fn valid_symbol_char(c: char) -> bool {
         c.is_alphanumeric()
             || vec!['&', '*', '-', '?', '+', '<', '>']
-            .into_iter()
-            .find(|x| c == *x)
-            .is_some()
+                .into_iter()
+                .find(|x| c == *x)
+                .is_some()
     }
 
     fn next_char(&mut self) -> io::Result<char> {

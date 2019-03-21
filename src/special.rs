@@ -244,9 +244,10 @@ mod tests {
     #[test]
     fn test_quote() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(quote)")
-                .downcast::<error::ArityError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(quote)")
+            .downcast::<error::ArityError>()
+            .is_ok());
 
         assert_eq!(ctx.ok_eval("(quote 1)"), read("1"));
         assert_eq!(ctx.ok_eval("(quote \"foo\")"), read("\"foo\""));
@@ -256,12 +257,14 @@ mod tests {
     #[test]
     fn test_if() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(if)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(if t)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(if)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(if t)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
 
         assert_eq!(ctx.ok_eval("(if t 1 2)"), read("1"));
         assert_eq!(ctx.ok_eval("(if nil 1 2)"), read("2"));
@@ -273,15 +276,18 @@ mod tests {
     #[test]
     fn test_lambda_syntax() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(lambda)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(lambda 1)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(lambda (1))")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(lambda)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(lambda 1)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(lambda (1))")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
 
         // lambda behavior is tested in test_set_fn
         assert!(core::to_function(&ctx.ok_eval("(lambda (x) x)")).is_ok());
@@ -290,18 +296,22 @@ mod tests {
     #[test]
     fn test_set_fn() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(set-fn)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(set-fn 1)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(set-fn foo)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(set-fn foo 2)")
-                .downcast::<error::CastError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(set-fn)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(set-fn 1)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(set-fn foo)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(set-fn foo 2)")
+            .downcast::<error::CastError>()
+            .is_ok());
 
         assert_eq!(
             ctx.ok_eval("(set-fn x (lambda () (quote x))) (x)"),
@@ -320,18 +330,22 @@ mod tests {
     #[test]
     fn test_let() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(let)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(let 1)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(let (x))")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(let ((1 1)))")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(let)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(let 1)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(let (x))")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(let ((1 1)))")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
 
         assert_eq!(ctx.ok_eval("(let ())"), read("nil"));
         assert_eq!(ctx.ok_eval("(let ((x 1)) x)"), read("1"));
@@ -346,23 +360,24 @@ mod tests {
     #[test]
     fn test_set_macro_fn() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(set-macro-fn)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(set-macro-fn 1)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(set-macro-fn foo)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(set-macro-fn foo 2)")
-                .downcast::<error::CastError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(set-macro-fn)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(set-macro-fn 1)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(set-macro-fn foo)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(set-macro-fn foo 2)")
+            .downcast::<error::CastError>()
+            .is_ok());
 
-        assert_eq!(
-            ctx.ok_eval("(set-macro-fn x (lambda () 1)) (x)"),
-            read("1")
-        );
+        assert_eq!(ctx.ok_eval("(set-macro-fn x (lambda () 1)) (x)"), read("1"));
         assert_eq!(
             ctx.ok_eval("(set-macro-fn x (lambda () (quote (let ((x 1)) x)))) (x)"),
             read("1")
@@ -392,12 +407,14 @@ mod tests {
     #[test]
     fn test_symbol_function() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(symbol-function)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(symbol-function 1)")
-                .downcast::<error::CastError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(symbol-function)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(symbol-function 1)")
+            .downcast::<error::CastError>()
+            .is_ok());
 
         assert!(core::to_function(
             &ctx.ok_eval("(set-fn foo (lambda (x) x)) (symbol-function foo)")
@@ -412,16 +429,19 @@ mod tests {
     #[test]
     fn test_error() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(error)")
-                .downcast::<error::SyntaxError>()
-                .is_ok());
-        assert!(ctx.err_eval("(error 1)")
-                .downcast::<error::CastError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(error)")
+            .downcast::<error::SyntaxError>()
+            .is_ok());
+        assert!(ctx
+            .err_eval("(error 1)")
+            .downcast::<error::CastError>()
+            .is_ok());
 
-        assert!(ctx.err_eval("(error \"foo\")")
-                .downcast::<error::GenericError>()
-                .is_ok());
+        assert!(ctx
+            .err_eval("(error \"foo\")")
+            .downcast::<error::GenericError>()
+            .is_ok());
     }
 
     #[test]
@@ -432,7 +452,7 @@ mod tests {
                 "(set-fn ho (lambda (f) (set-fn f f) (f 5)))
                  (set-fn foo (lambda (x) x))
                  (ho (symbol-function foo))"
-            ) ,
+            ),
             read("5")
         );
     }
