@@ -82,11 +82,11 @@ pub fn read(s: impl Into<String>) -> LispObject {
 macro_rules! assert_ok {
     ($ctx:ident, $actual:expr, $expected:expr) => {
         assert_eq!($ctx.ok_eval($actual), read($expected));
-    }
+    };
 }
 
 macro_rules! assert_err {
     ($ctx:ident, $actual:expr, $downcast_to:ty) => {
         assert!($ctx.err_eval($actual).downcast::<$downcast_to>().is_ok());
-    }
+    };
 }

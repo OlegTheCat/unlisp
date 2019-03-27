@@ -6,9 +6,9 @@ use std::thread;
 extern crate im;
 
 #[cfg(test)]
-mod test_utils;
-#[cfg(test)]
 mod stdlib_test;
+#[cfg(test)]
+mod test_utils;
 
 mod common;
 mod cons;
