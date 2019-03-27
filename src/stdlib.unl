@@ -52,6 +52,16 @@
    (if x nil t)))
 
 (set-macro-fn
+ unq
+ (lambda (x)
+   (error "unq outside of qquote")))
+
+(set-macro-fn
+ unqs
+ (lambda (x)
+   (error "unqs outside of qquote")))
+
+(set-macro-fn
  qquote
  (lambda (x)
    (qquote-process x)))
@@ -63,11 +73,13 @@
        (list (quote quote) x)
        (if (emptyp x)
            (list (quote quote) x)
-           (if (equal (first x) (quote unq))
-               (first (rest x))
-               (if (equal (first x) (quote unqs))
-                (error "unqs after qquote")
-                (qquote-transform-list x)))))))
+           (if (equal (first x) (quote qquote))
+               (qquote-process (qquote-process (first (rest x))))
+               (if (equal (first x) (quote unq))
+                (first (rest x))
+                (if (equal (first x) (quote unqs))
+                    (error "unqs after qquote")
+                    (qquote-transform-list x))))))))
 
 (set-fn
  qquote-transform-list

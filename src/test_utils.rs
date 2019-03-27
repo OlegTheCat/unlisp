@@ -1,3 +1,5 @@
+#![macro_use]
+
 use crate::common;
 use crate::core::*;
 use crate::error;
@@ -75,4 +77,16 @@ pub fn read(s: impl Into<String>) -> LispObject {
     let mut bytes = s.as_bytes();
     let mut reader = Reader::create(&mut bytes);
     reader.read_form().unwrap()
+}
+
+macro_rules! assert_ok {
+    ($ctx:ident, $actual:expr, $expected:expr) => {
+        assert_eq!($ctx.ok_eval($actual), read($expected));
+    }
+}
+
+macro_rules! assert_err {
+    ($ctx:ident, $actual:expr, $downcast_to:ty) => {
+        assert!($ctx.err_eval($actual).downcast::<$downcast_to>().is_ok());
+    }
 }

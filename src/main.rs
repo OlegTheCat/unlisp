@@ -5,6 +5,11 @@ use std::thread;
 
 extern crate im;
 
+#[cfg(test)]
+mod test_utils;
+#[cfg(test)]
+mod stdlib_test;
+
 mod common;
 mod cons;
 mod core;
@@ -17,8 +22,6 @@ mod print;
 mod pushback_reader;
 mod reader;
 mod special;
-#[cfg(test)]
-mod test_utils;
 
 use crate::common::*;
 
