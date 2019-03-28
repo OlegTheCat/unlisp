@@ -1,29 +1,16 @@
+extern crate im;
+extern crate unlisp;
+
 use std::io;
 use std::io::Write;
 use std::ops::DerefMut;
 use std::thread;
 
-extern crate im;
-
-#[cfg(test)]
-mod stdlib_test;
-#[cfg(test)]
-mod test_utils;
-
-mod common;
-mod cons;
-mod core;
-mod error;
-mod eval;
-mod lexer;
-mod macroexpand;
-mod native;
-mod print;
-mod pushback_reader;
-mod reader;
-mod special;
-
-use crate::common::*;
+use unlisp::common::*;
+use unlisp::core;
+use unlisp::native;
+use unlisp::reader;
+use unlisp::special;
 
 fn repl() {
     let mut stdin = io::stdin();
