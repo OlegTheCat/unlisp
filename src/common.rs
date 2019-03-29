@@ -2,7 +2,10 @@ use crate::core;
 use crate::error;
 use crate::eval;
 use crate::macroexpand;
+use crate::native;
 use crate::reader;
+use crate::special;
+
 use std::fs;
 use std::io;
 
@@ -28,4 +31,10 @@ pub fn eval_stdlib(env: &core::Env) {
             Err(ref e) => panic!("Unexpected error during stdlib eval: {}", e),
         }
     }
+}
+
+pub fn init_env(env: &mut core::Env) {
+    special::prepare_specials(&mut env.global_env_mut());
+    native::prepare_native_stdlib(&mut env.global_env_mut());
+    eval_stdlib(env);
 }

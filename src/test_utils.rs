@@ -8,7 +8,6 @@ use crate::reader::Reader;
 use crate::special;
 use std::cell::RefCell;
 use std::io;
-use std::ops::DerefMut;
 use std::rc::Rc;
 
 pub struct Context {
@@ -20,11 +19,11 @@ impl Context {
         let env = Env::new();
 
         if load_specials {
-            special::prepare_specials(env.global_env.borrow_mut().deref_mut());
+            special::prepare_specials(&mut env.global_env_mut());
         }
 
         if load_natives {
-            native::prepare_native_stdlib(env.global_env.borrow_mut().deref_mut());
+            native::prepare_native_stdlib(&mut env.global_env_mut());
         }
 
         if load_stdlib {
@@ -40,7 +39,7 @@ impl Context {
 
     fn env(&self) -> Env {
         Env {
-            global_env: Rc::new(RefCell::new(self.env.global_env.borrow().clone())),
+            global_env: Rc::new(RefCell::new(self.env.global_env().clone())),
             cur_env: self.env.cur_env.clone(),
         }
     }

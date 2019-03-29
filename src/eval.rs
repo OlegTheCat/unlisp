@@ -11,7 +11,7 @@ fn syntax_err(message: &str) -> error::SyntaxError {
 
 macro_rules! lookup_symbol {
     ($env:ident, $lookup_env:ident, $sym:expr) => {{
-        let global = $env.global_env.borrow();
+        let global = $env.global_env();
         $env.cur_env
             .$lookup_env
             .get($sym)
@@ -106,12 +106,7 @@ fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
     let sym = core::to_symbol(form.first().unwrap())?;
     let args = form.tail();
 
-    let spec = env
-        .global_env
-        .borrow()
-        .special_env
-        .get(sym)
-        .map(|f| f.clone());
+    let spec = env.global_env().special_env.get(sym).map(|f| f.clone());
 
     if let Some(f) = spec {
         f.0(env.clone(), args)

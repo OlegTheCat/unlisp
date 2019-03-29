@@ -3,14 +3,11 @@ extern crate unlisp;
 
 use std::io;
 use std::io::Write;
-use std::ops::DerefMut;
 use std::thread;
 
 use unlisp::common::*;
 use unlisp::core;
-use unlisp::native;
 use unlisp::reader;
-use unlisp::special;
 
 fn repl() {
     let mut stdin = io::stdin();
@@ -18,10 +15,8 @@ fn repl() {
     print!(">>> ");
     io::stdout().flush().unwrap();
 
-    let env = core::Env::new();
-    special::prepare_specials(env.global_env.as_ref().borrow_mut().deref_mut());
-    native::prepare_native_stdlib(env.global_env.as_ref().borrow_mut().deref_mut());
-    eval_stdlib(&env);
+    let mut env = core::Env::new();
+    init_env(&mut env);
 
     // let mut s = "(mapcar (symf add) (range 1000) (range 1000))".as_bytes();
     // let mut reader = reader::Reader::create(&mut s);

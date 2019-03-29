@@ -21,6 +21,13 @@ fn test_quasiquote() {
         "(1 2 3)"
     );
 
+
+}
+
+#[test]
+fn test_nested_quasiquote() {
+    let ctx = ctx();
+
     assert_ok!(ctx, "(let ((x 1)) (qquote (qquote (unq (unq x)))))", "1");
     assert_ok!(
         ctx,

@@ -5,6 +5,8 @@ use std::cell::RefCell;
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
+use std::ops::Deref;
+use std::ops::DerefMut;
 use std::rc::Rc;
 
 macro_rules! define_unwrapper {
@@ -85,6 +87,14 @@ impl Env {
             global_env: Rc::new(RefCell::new(GlobalEnvFrame::new())),
             cur_env: EnvFrame::new(),
         }
+    }
+
+    pub fn global_env_mut<'a>(&'a self) -> impl DerefMut<Target = GlobalEnvFrame> + 'a {
+        self.global_env.as_ref().borrow_mut()
+    }
+
+    pub fn global_env<'a>(&'a self) -> impl Deref<Target = GlobalEnvFrame> + 'a {
+        self.global_env.as_ref().borrow()
     }
 }
 

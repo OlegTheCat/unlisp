@@ -158,11 +158,7 @@ fn set_fn(env: Env, args: List<LispObject>) -> error::GenResult<LispObject> {
     let func = args.next().ok_or(syntax_err("no function in set-fn"))?;
     let func = core::to_function_owned(eval(env.clone(), &func)?)?;
 
-    env.global_env
-        .as_ref()
-        .borrow_mut()
-        .fn_env
-        .insert(sym.clone(), func);
+    env.global_env_mut().fn_env.insert(sym.clone(), func);
     Ok(LispObject::nil())
 }
 
@@ -176,11 +172,7 @@ fn set_macro_fn(env: Env, args: List<LispObject>) -> error::GenResult<LispObject
         .ok_or(syntax_err("no function in set-macro-fn"))?;
     let func = core::to_function_owned(eval(env.clone(), &func)?)?;
 
-    env.global_env
-        .as_ref()
-        .borrow_mut()
-        .macro_env
-        .insert(sym.clone(), func);
+    env.global_env_mut().macro_env.insert(sym.clone(), func);
     Ok(LispObject::nil())
 }
 
