@@ -6,66 +6,61 @@ pub type GenResult<T> = Result<T, GenError>;
 
 #[derive(Debug, Clone)]
 pub struct CastError {
-    message: String,
     from: String,
     to: String,
 }
 
 impl CastError {
-    pub fn new(from: String, to: String) -> CastError {
-        CastError {
-            message: format!("cannot cast {} to {}", &from, &to),
-            from: from,
-            to: to,
-        }
+    pub fn new(from: impl Into<String>, to: impl Into<String>) -> Self {
+        let from = from.into();
+        let to = to.into();
+        Self { from: from, to: to }
     }
 }
 
 impl fmt::Display for CastError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.message)
+        write!(f, "cannot cast {} to {}", &self.from, &self.to)
     }
 }
 
-impl std::error::Error for CastError {
-    fn description(&self) -> &str {
-        &self.message
-    }
-}
+impl std::error::Error for CastError {}
 
 #[derive(Debug, Clone)]
 pub struct ArityError {
-    message: String,
     actual_args_count: usize,
     expected_args_count: usize,
+    is_vararg: bool,
     fn_name: String,
 }
 
 impl ArityError {
-    pub fn new(expected: usize, actual: usize, fn_name: String) -> ArityError {
-        ArityError {
-            message: format!(
-                "wrong number of arguments ({}) passed to {}",
-                actual, &fn_name
-            ),
-            actual_args_count: actual,
+    pub fn new(
+        expected: usize,
+        actual: usize,
+        is_vararg: bool,
+        fn_name: impl Into<String>,
+    ) -> Self {
+        Self {
             expected_args_count: expected,
-            fn_name: fn_name,
+            actual_args_count: actual,
+            is_vararg: is_vararg,
+            fn_name: fn_name.into(),
         }
     }
 }
 
 impl fmt::Display for ArityError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.message)
+        write!(
+            f,
+            "wrong number of arguments ({}) passed to {}",
+            self.actual_args_count, self.fn_name
+        )
     }
 }
 
-impl std::error::Error for ArityError {
-    fn description(&self) -> &str {
-        &self.message
-    }
-}
+impl std::error::Error for ArityError {}
 
 #[derive(Debug, Clone)]
 pub struct SyntaxError {
@@ -73,8 +68,10 @@ pub struct SyntaxError {
 }
 
 impl SyntaxError {
-    pub fn new(message: String) -> SyntaxError {
-        SyntaxError { message: message }
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
     }
 }
 
@@ -84,28 +81,18 @@ impl fmt::Display for SyntaxError {
     }
 }
 
-impl std::error::Error for SyntaxError {
-    fn description(&self) -> &str {
-        &self.message
-    }
-}
+impl std::error::Error for SyntaxError {}
 
 #[derive(Debug, Clone)]
 pub struct UndefinedSymbol {
-    message: String,
     symbol_name: String,
     is_fn: bool,
 }
 
 impl UndefinedSymbol {
-    pub fn new(symbol_name: String, is_fn: bool) -> UndefinedSymbol {
-        UndefinedSymbol {
-            message: format!(
-                "undefined {} {}",
-                if is_fn { "function" } else { "symbol" },
-                &symbol_name
-            ),
-            symbol_name: symbol_name,
+    pub fn new(symbol_name: impl Into<String>, is_fn: bool) -> Self {
+        Self {
+            symbol_name: symbol_name.into(),
             is_fn: is_fn,
         }
     }
@@ -113,15 +100,16 @@ impl UndefinedSymbol {
 
 impl fmt::Display for UndefinedSymbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.message)
+        write!(
+            f,
+            "undefined {} {}",
+            if self.is_fn { "function" } else { "symbol" },
+            self.symbol_name
+        )
     }
 }
 
-impl std::error::Error for UndefinedSymbol {
-    fn description(&self) -> &str {
-        &self.message
-    }
-}
+impl std::error::Error for UndefinedSymbol {}
 
 #[derive(Debug, Clone)]
 pub struct GenericError {
@@ -129,8 +117,10 @@ pub struct GenericError {
 }
 
 impl GenericError {
-    pub fn new(message: String) -> GenericError {
-        GenericError { message: message }
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
     }
 }
 
@@ -140,8 +130,4 @@ impl fmt::Display for GenericError {
     }
 }
 
-impl std::error::Error for GenericError {
-    fn description(&self) -> &str {
-        &self.message
-    }
-}
+impl std::error::Error for GenericError {}

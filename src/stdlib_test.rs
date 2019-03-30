@@ -20,8 +20,6 @@ fn test_quasiquote() {
         "(let ((x (list 1 2 3))) (qquote ((unqs x))))",
         "(1 2 3)"
     );
-
-
 }
 
 #[test]

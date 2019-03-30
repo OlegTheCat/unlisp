@@ -9,6 +9,8 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 use std::rc::Rc;
 
+pub type LispObjectResult = error::GenResult<LispObject>;
+
 macro_rules! define_unwrapper {
     ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
         #[allow(unused)]
@@ -99,7 +101,7 @@ impl Env {
 }
 
 #[derive(Clone)]
-pub struct NativeFnWrapper(pub fn(Env, List<LispObject>) -> error::GenResult<LispObject>);
+pub struct NativeFnWrapper(pub fn(Env, List<LispObject>) -> LispObjectResult);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct InterpretedFn {

@@ -9,10 +9,7 @@ use crate::special;
 use std::fs;
 use std::io;
 
-pub fn macroexpand_and_eval(
-    env: core::Env,
-    form: &core::LispObject,
-) -> error::GenResult<core::LispObject> {
+pub fn macroexpand_and_eval(env: core::Env, form: &core::LispObject) -> core::LispObjectResult {
     let expanded = macroexpand::macroexpand_all(env.clone(), form)?;
     eval::eval(env, &expanded)
 }
@@ -26,7 +23,7 @@ pub fn eval_stdlib(env: &core::Env) {
             Ok(form) => {
                 macroexpand_and_eval(env.clone(), &form).expect("error during stdlib eval");
             }
-            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
+            ref err @ Err(_) if is_gen_eof(err) => break,
 
             Err(ref e) => panic!("Unexpected error during stdlib eval: {}", e),
         }
@@ -37,4 +34,14 @@ pub fn init_env(env: &mut core::Env) {
     special::prepare_specials(&mut env.global_env_mut());
     native::prepare_native_stdlib(&mut env.global_env_mut());
     eval_stdlib(env);
+}
+
+pub fn is_gen_eof<T>(result: &error::GenResult<T>) -> bool {
+    match result {
+        Err(e) => match e.downcast_ref::<io::Error>() {
+            Some(io_err) => io_err.kind() == io::ErrorKind::UnexpectedEof,
+            None => false,
+        },
+        _ => false,
+    }
 }

@@ -1,11 +1,12 @@
-use crate::core::LispObject;
-use crate::core::Symbol;
-use std::io;
-use std::io::Read;
-
 use crate::cons::List;
+use crate::core::LispObject;
+use crate::core::LispObjectResult;
+use crate::core::Symbol;
+use crate::error::SyntaxError;
 use crate::lexer::Lexer;
 use crate::lexer::Token;
+
+use std::io::Read;
 
 pub struct Reader<'a, T: Read + 'a> {
     lexer: Lexer<'a, T>,
@@ -29,7 +30,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         }
     }
 
-    fn read_list_form(&mut self) -> io::Result<LispObject> {
+    fn read_list_form(&mut self) -> LispObjectResult {
         let mut vec = Vec::new();
 
         let mut tok = self.lexer.next_token()?;
@@ -43,7 +44,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
                 form = match tok {
                     Token::LeftPar => self.read_list_form()?,
                     Token::RightPar => break,
-                    _ => panic!("Unexpected token"),
+                    tok => panic!("unexpected token {:?}", tok),
                 }
             }
 
@@ -54,7 +55,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         Ok(LispObject::List(List::from_rev_iter(vec)))
     }
 
-    pub fn read_form(&mut self) -> io::Result<LispObject> {
+    pub fn read_form(&mut self) -> LispObjectResult {
         let tok = self.lexer.next_token()?;
 
         let trivial_form = self.tok_to_trivial_form(&tok);
@@ -62,8 +63,8 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
             Some(form) => form,
             None => match tok {
                 Token::LeftPar => self.read_list_form()?,
-                Token::RightPar => panic!("unbalanced pars"),
-                _ => panic!("Unexpected token"),
+                Token::RightPar => Err(SyntaxError::new("unbalanced parens"))?,
+                tok => panic!("unexpected token {:?}", tok),
             },
         };
 
@@ -74,8 +75,8 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::is_gen_eof;
     use crate::cons::List;
-    use crate::lexer::is_eof;
 
     #[test]
     fn test_integer_literal() {
@@ -162,7 +163,7 @@ mod tests {
     fn test_incomplete_list() {
         let mut input = "(foo".as_bytes();
         let mut reader = Reader::create(&mut input);
-        assert!(is_eof(&reader.read_form()));
+        assert!(is_gen_eof(&reader.read_form()));
     }
 
     //TODO: tests on unbalanced pars

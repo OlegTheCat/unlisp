@@ -1,3 +1,4 @@
+use crate::error::{GenResult, SyntaxError};
 use std::io;
 use std::io::Read;
 
@@ -10,7 +11,6 @@ pub enum Token {
     IntegerLiteral(i64),
     StringLiteral(String),
     Symbol(String),
-    Unexpected,
 }
 
 pub fn is_eof<T>(result: &io::Result<T>) -> bool {
@@ -118,7 +118,7 @@ impl<'a, T: Read> Lexer<'a, T> {
         Ok(())
     }
 
-    pub fn next_token(&mut self) -> io::Result<Token> {
+    pub fn next_token(&mut self) -> GenResult<Token> {
         let c = self.next_char()?;
 
         if c.is_whitespace() {
@@ -144,7 +144,7 @@ impl<'a, T: Read> Lexer<'a, T> {
             }
 
             '"' => Token::StringLiteral(self.read_string_literal()?),
-            _ => Token::Unexpected,
+            _ => Err(SyntaxError::new(format!("unexpexted char {}", c)))?,
         };
 
         Ok(tok)
@@ -154,6 +154,7 @@ impl<'a, T: Read> Lexer<'a, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::is_gen_eof;
 
     #[test]
     fn test_integer_literal() {
@@ -190,7 +191,7 @@ mod tests {
         let mut input = "\"foo".as_bytes();
         let mut lexer = Lexer::create(&mut input);
 
-        assert!(is_eof(&lexer.next_token()));
+        assert!(is_gen_eof(&lexer.next_token()));
     }
 
     #[test]

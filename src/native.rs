@@ -1,6 +1,7 @@
 use crate::cons::List;
 use crate::core;
 use crate::core::LispObject;
+use crate::core::LispObjectResult;
 use crate::core::Symbol;
 use crate::error;
 use crate::eval;
@@ -17,17 +18,17 @@ fn identity(v: LispObject) -> LispObject {
 macro_rules! define_native_fn {
     ($id:ident ($env:ident, $( $arg:ident : $converter:path ),*) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: core::Env, args: List<LispObject> ) -> error::GenResult<LispObject> {
+        fn $id( $env: core::Env, args: List<LispObject> ) -> LispObjectResult {
             let args_count = args.len();
             let mut args = args.iter();
             let mut parameters_count = 0;
             $( stringify!($arg); parameters_count += 1; )*
 
                 if parameters_count != args_count {
-                    return Err(Box::new(
-                        error::ArityError::new(parameters_count,
+                    Err(error::ArityError::new(parameters_count,
                                                args_count,
-                                               stringify!($id).to_string())));
+                                               false,
+                                               stringify!($id).to_string()))?
                 }
 
             $( let mut $arg = $converter(args.next().unwrap())?; )*
@@ -39,7 +40,7 @@ macro_rules! define_native_fn {
 
     ($id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: core::Env, args: List<LispObject> ) -> error::GenResult<LispObject> {
+        fn $id( $env: core::Env, args: List<LispObject> ) -> LispObjectResult {
 
             let args_count = args.len();
             let mut args = args.iter();
@@ -49,10 +50,10 @@ macro_rules! define_native_fn {
             $( stringify!($arg); non_vararg_parameters_count += 1; )*
 
                 if non_vararg_parameters_count > args_count {
-                    return Err(Box::new(
-                        error::ArityError::new(non_vararg_parameters_count,
-                                               args_count,
-                                               stringify!($id).to_string())));
+                    return Err(error::ArityError::new(non_vararg_parameters_count,
+                                                      args_count,
+                                                      true,
+                                                      stringify!($id).to_string()))?
                 }
 
             $( #[allow(unused_mut)] let mut $arg = $converter(args.next().unwrap())?; )*
@@ -102,9 +103,9 @@ define_native_fn! {
     }
 }
 
-fn native_apply(env: core::Env, args: List<LispObject>) -> error::GenResult<LispObject> {
+fn native_apply(env: core::Env, args: List<LispObject>) -> LispObjectResult {
     if args.len() <= 1 {
-        return Err(Box::new(error::ArityError::new(2, 1, "apply".to_string())));
+        Err(error::ArityError::new(2, 1, true, "apply".to_string()))?
     }
 
     let f = core::to_function(args.first().unwrap())?;
@@ -266,7 +267,7 @@ pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::error;
     use crate::test_utils::*;
 
     fn ctx() -> Context {

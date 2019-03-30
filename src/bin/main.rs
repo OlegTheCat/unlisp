@@ -31,8 +31,8 @@ fn repl() {
                 }
                 Err(e) => println!("error: {}", e),
             },
-            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
-            Err(ref e) => println!("Unexpected error: {}", e),
+            ref err @ Err(_) if is_gen_eof(err) => break,
+            Err(ref e) => println!("reader error: {}", e),
         }
 
         print!(">>> ");

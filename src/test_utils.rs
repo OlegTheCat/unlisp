@@ -7,7 +7,6 @@ use crate::native;
 use crate::reader::Reader;
 use crate::special;
 use std::cell::RefCell;
-use std::io;
 use std::rc::Rc;
 
 pub struct Context {
@@ -44,7 +43,7 @@ impl Context {
         }
     }
 
-    pub fn eval(&self, s: impl Into<String>) -> error::GenResult<LispObject> {
+    pub fn eval(&self, s: impl Into<String>) -> LispObjectResult {
         let env = self.env();
         let s = s.into();
         let mut bytes = s.as_bytes();
@@ -55,8 +54,8 @@ impl Context {
                 Ok(form) => {
                     res = common::macroexpand_and_eval(env.clone(), &form);
                 }
-                Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
-                Err(e) => return Err(Box::new(e)),
+                ref err @ Err(_) if common::is_gen_eof(err) => break,
+                Err(e) => return Err(e),
             }
         }
         res

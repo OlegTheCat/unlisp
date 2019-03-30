@@ -1,6 +1,7 @@
 use crate::cons::List;
 use crate::core::Env;
 use crate::core::LispObject;
+use crate::core::LispObjectResult;
 use crate::core::Symbol;
 use crate::error;
 use crate::eval;
@@ -15,11 +16,11 @@ fn macroexpand_list(env: &Env, list: &List<LispObject>) -> error::GenResult<List
     Ok(List::from_rev_iter(expanded))
 }
 
-fn macroexpand_into_list(env: &Env, list: &List<LispObject>) -> error::GenResult<LispObject> {
+fn macroexpand_into_list(env: &Env, list: &List<LispObject>) -> LispObjectResult {
     Ok(LispObject::List(macroexpand_list(env, list)?))
 }
 
-pub fn macroexpand_all(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
+pub fn macroexpand_all(env: Env, form: &LispObject) -> LispObjectResult {
     match form {
         self_expand @ LispObject::T
         | self_expand @ LispObject::Integer(_)

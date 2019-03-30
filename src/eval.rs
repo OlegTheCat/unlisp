@@ -2,12 +2,9 @@ use crate::cons::List;
 use crate::core;
 use crate::core::Env;
 use crate::core::LispObject;
+use crate::core::LispObjectResult;
 use crate::core::Symbol;
 use crate::error;
-
-fn syntax_err(message: &str) -> error::SyntaxError {
-    error::SyntaxError::new(message.to_string())
-}
 
 macro_rules! lookup_symbol {
     ($env:ident, $lookup_env:ident, $sym:expr) => {{
@@ -37,7 +34,7 @@ pub fn call_function_object(
     f: &core::Function,
     args: List<LispObject>,
     eval_args: bool,
-) -> error::GenResult<LispObject> {
+) -> LispObjectResult {
     let args = if eval_args {
         args.iter()
             .map(|lo| eval(env.clone(), lo))
@@ -69,11 +66,12 @@ pub fn call_function_object(
 
                 let arglist = LispObject::List(List::from_rev_iter(arglist));
 
-                return Err(Box::new(error::ArityError::new(
+                Err(error::ArityError::new(
                     expected,
                     actual,
+                    has_restarg,
                     format!("(lambda {} ...)", arglist),
-                )));
+                ))?
             }
 
             let mut args = args.iter();
@@ -101,7 +99,7 @@ pub fn call_function_object(
     }
 }
 
-fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
+fn call_symbol(env: Env, form: &LispObject) -> LispObjectResult {
     let form = core::to_list(form)?;
     let sym = core::to_symbol(form.first().unwrap())?;
     let args = form.tail();
@@ -113,11 +111,11 @@ fn call_symbol(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
     } else if let Some(ref f) = lookup_symbol_function(&env, sym) {
         call_function_object(env.clone(), f, args, true)
     } else {
-        Err(Box::new(error::UndefinedSymbol::new(sym.name(), true)))
+        Err(error::UndefinedSymbol::new(sym.name(), true))?
     }
 }
 
-pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
+pub fn eval(env: Env, form: &LispObject) -> LispObjectResult {
     match form {
         self_eval @ LispObject::T => Ok(self_eval.clone()),
         self_eval @ LispObject::Integer(_) => Ok(self_eval.clone()),
@@ -129,7 +127,7 @@ pub fn eval(env: Env, form: &LispObject) -> error::GenResult<LispObject> {
             .ok_or(Box::new(error::UndefinedSymbol::new(s.name(), false))),
         LispObject::List(ref list) => match list.ufirst() {
             LispObject::Symbol(_) => call_symbol(env, form),
-            _ => Err(Box::new(syntax_err("illegal function call"))),
+            _ => Err(error::SyntaxError::new("illegal function call"))?,
         },
     }
 }
