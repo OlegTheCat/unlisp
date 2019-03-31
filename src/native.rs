@@ -183,9 +183,8 @@ define_native_fn! {
 define_native_fn! {
     native_first(_env, list: core::to_list) -> identity {
         let first = list.first()
-            .ok_or(
-                error::GenericError::new(
-                    "cannot do first on empty list".to_string()))?;
+            .ok_or_else(|| error::GenericError::new(
+                "cannot do first on empty list".to_string()))?;
         first.clone()
     }
 }

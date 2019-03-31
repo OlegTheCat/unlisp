@@ -123,8 +123,11 @@ pub fn eval(env: Env, form: &LispObject) -> LispObjectResult {
         self_eval @ LispObject::Fn(_) => Ok(self_eval.clone()),
 
         LispObject::List(ref list) if list.is_empty() => Ok(LispObject::nil()),
-        LispObject::Symbol(s) => lookup_symbol_value(&env, &s)
-            .ok_or(Box::new(error::UndefinedSymbol::new(s.name(), false))),
+        LispObject::Symbol(s) => {
+            let val = lookup_symbol_value(&env, &s)
+                .ok_or_else(|| error::UndefinedSymbol::new(s.name(), false))?;
+            Ok(val)
+        }
         LispObject::List(ref list) => match list.ufirst() {
             LispObject::Symbol(_) => call_symbol(env, form),
             _ => Err(error::SyntaxError::new("illegal function call"))?,
