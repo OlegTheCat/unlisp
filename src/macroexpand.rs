@@ -71,8 +71,13 @@ pub fn macroexpand_all(env: Env, form: &LispObject) -> LispObjectResult {
                 }
                 LispObject::Symbol(s) => match eval::lookup_symbol_macro(&env, s) {
                     Some(ref f) => {
-                        let expanded =
-                            eval::call_function_object(env.clone(), f, list.tail(), false)?;
+                        let expanded = eval::call_function_object(
+                            env.clone(),
+                            f,
+                            list.tail(),
+                            false,
+                            Some(s),
+                        )?;
                         macroexpand_all(env, &expanded)
                     }
                     None => macroexpand_into_list(&env, list),

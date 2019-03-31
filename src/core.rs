@@ -104,20 +104,43 @@ impl Env {
 pub struct NativeFnWrapper(pub fn(Env, List<LispObject>) -> LispObjectResult);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct InterpretedFn {
-    pub restarg: Option<Symbol>,
-    pub arglist: List<Symbol>,
-    pub body: List<LispObject>,
+pub enum FunctionBody {
+    Interpreted(List<LispObject>),
+    Native(NativeFnWrapper),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum Function {
-    InterpretedFunction(InterpretedFn),
-    NativeFunction(NativeFnWrapper),
+pub struct Function {
+    pub arglist: List<Symbol>,
+    pub restarg: Option<Symbol>,
+    pub body: FunctionBody,
 }
 
-define_unwrapper!(to_interpreted_function(Function::InterpretedFunction) -> InterpretedFn);
-define_unwrapper!(to_native_function(Function::NativeFunction) -> NativeFnWrapper);
+impl Function {
+    pub fn new_interpreted(
+        arglist: List<Symbol>,
+        restarg: Option<Symbol>,
+        body: List<LispObject>,
+    ) -> Self {
+        Self {
+            arglist: arglist,
+            restarg: restarg,
+            body: FunctionBody::Interpreted(body),
+        }
+    }
+
+    pub fn new_native(
+        arglist: List<Symbol>,
+        restarg: Option<Symbol>,
+        body: NativeFnWrapper,
+    ) -> Self {
+        Self {
+            arglist: arglist,
+            restarg: restarg,
+            body: FunctionBody::Native(body),
+        }
+    }
+}
 
 impl fmt::Debug for NativeFnWrapper {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

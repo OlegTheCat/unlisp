@@ -31,9 +31,10 @@ pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<core::Function> {
 
 pub fn call_function_object(
     env: Env,
-    f: &core::Function,
+    function: &core::Function,
     args: List<LispObject>,
     eval_args: bool,
+    name_hint: Option<&Symbol>,
 ) -> LispObjectResult {
     let args = if eval_args {
         args.iter()
@@ -43,54 +44,58 @@ pub fn call_function_object(
         args
     };
 
-    match f {
-        core::Function::NativeFunction(native_fn) => native_fn.0(env, args),
-        core::Function::InterpretedFunction(interpreted_fn) => {
-            let has_restarg = interpreted_fn.restarg.is_some();
+    let has_restarg = function.restarg.is_some();
 
-            if (args.len() < interpreted_fn.arglist.len())
-                || (!has_restarg && interpreted_fn.arglist.len() != args.len())
-            {
-                let expected = interpreted_fn.arglist.len();
-                let actual = args.len();
-                let mut arglist = interpreted_fn
-                    .arglist
-                    .iter()
-                    .map(|s| LispObject::Symbol(s.clone()))
-                    .collect::<Vec<_>>();
+    if (args.len() < function.arglist.len())
+        || (!has_restarg && function.arglist.len() != args.len())
+    {
+        let render_lambda = || {
+            let mut arglist = function
+                .arglist
+                .iter()
+                .map(|s| LispObject::Symbol(s.clone()))
+                .collect::<Vec<_>>();
 
-                if let Some(ref restarg) = interpreted_fn.restarg {
-                    arglist.push(LispObject::Symbol(Symbol::new("&")));
-                    arglist.push(LispObject::Symbol(restarg.clone()));
-                }
-
-                let arglist = LispObject::List(List::from_rev_iter(arglist));
-
-                Err(error::ArityError::new(
-                    expected,
-                    actual,
-                    has_restarg,
-                    format!("(lambda {} ...)", arglist),
-                ))?
+            if let Some(ref restarg) = function.restarg {
+                arglist.push(LispObject::Symbol(Symbol::new("&")));
+                arglist.push(LispObject::Symbol(restarg.clone()));
             }
 
+            let arglist = LispObject::List(List::from_rev_iter(arglist));
+            format!("(lambda {} ...)", arglist)
+        };
+
+        let expected = function.arglist.len();
+        let actual = args.len();
+
+        Err(error::ArityError::new(
+            expected,
+            actual,
+            has_restarg,
+            name_hint.map(Symbol::name).unwrap_or_else(render_lambda),
+        ))?
+    }
+
+    match function.body {
+        core::FunctionBody::Native(ref native_body) => native_body.0(env, args),
+        core::FunctionBody::Interpreted(ref interpreted_body) => {
             let mut args = args.iter();
 
             let mut new_env = env.clone();
-            for (sym, val) in interpreted_fn.arglist.iter().zip(args.by_ref()) {
+            for (sym, val) in function.arglist.iter().zip(args.by_ref()) {
                 new_env.cur_env.sym_env.insert(sym.clone(), val.clone());
             }
 
             if has_restarg {
                 let restarg = args.map(|lo| lo.clone()).collect();
                 new_env.cur_env.sym_env.insert(
-                    interpreted_fn.restarg.as_ref().unwrap().clone(),
+                    function.restarg.as_ref().unwrap().clone(),
                     LispObject::List(restarg),
                 );
             }
 
             let mut result = LispObject::nil();
-            for form in interpreted_fn.body.iter() {
+            for form in interpreted_body.iter() {
                 result = eval(new_env.clone(), form)?;
             }
 
@@ -109,7 +114,7 @@ fn call_symbol(env: Env, form: &LispObject) -> LispObjectResult {
     if let Some(f) = spec {
         f.0(env.clone(), args)
     } else if let Some(ref f) = lookup_symbol_function(&env, sym) {
-        call_function_object(env.clone(), f, args, true)
+        call_function_object(env.clone(), f, args, true, Some(sym))
     } else {
         Err(error::UndefinedSymbol::new(sym.name(), true))?
     }

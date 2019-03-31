@@ -20,9 +20,9 @@ fn write_list(f: &mut fmt::Formatter, list: &List<LispObject>) -> Result<(), fmt
 
 impl fmt::Display for core::Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self {
-            core::Function::NativeFunction(_) => write!(f, "#<NATIVE-FN"),
-            core::Function::InterpretedFunction(_) => write!(f, "#<INTERPRETED-FN>"),
+        match self.body {
+            core::FunctionBody::Native(_) => write!(f, "#<NATIVE-FN"),
+            core::FunctionBody::Interpreted(_) => write!(f, "#<INTERPRETED-FN>"),
         }
     }
 }

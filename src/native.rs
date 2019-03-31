@@ -16,45 +16,29 @@ fn identity(v: LispObject) -> LispObject {
 }
 
 macro_rules! define_native_fn {
-    ($id:ident ($env:ident, $( $arg:ident : $converter:path ),*) -> $result_wrap:path $body:block) => {
+    ($maker:ident, $id:ident ($env:ident, $( $arg:ident : $converter:path ),*) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
         fn $id( $env: core::Env, args: List<LispObject> ) -> LispObjectResult {
-            let args_count = args.len();
             let mut args = args.iter();
-            let mut parameters_count = 0;
-            $( stringify!($arg); parameters_count += 1; )*
-
-                if parameters_count != args_count {
-                    Err(error::ArityError::new(parameters_count,
-                                               args_count,
-                                               false,
-                                               stringify!($id).to_string()))?
-                }
 
             $( let mut $arg = $converter(args.next().unwrap())?; )*
 
             let res = $result_wrap($body);
             Ok(res)
         }
+
+        fn $maker() -> core::Function {
+            let args = List::from_rev_iter(vec![$( Symbol::new(stringify!($arg)), )*]);
+            core::Function::new_native(args , None, core::NativeFnWrapper($id))
+        }
+
     };
 
-    ($id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
+    ($maker:ident, $id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
         fn $id( $env: core::Env, args: List<LispObject> ) -> LispObjectResult {
 
-            let args_count = args.len();
             let mut args = args.iter();
-
-            #[allow(unused_mut)]
-            let mut non_vararg_parameters_count = 0;
-            $( stringify!($arg); non_vararg_parameters_count += 1; )*
-
-                if non_vararg_parameters_count > args_count {
-                    return Err(error::ArityError::new(non_vararg_parameters_count,
-                                                      args_count,
-                                                      true,
-                                                      stringify!($id).to_string()))?
-                }
 
             $( #[allow(unused_mut)] let mut $arg = $converter(args.next().unwrap())?; )*
 
@@ -65,13 +49,21 @@ macro_rules! define_native_fn {
             let res = $result_wrap($body);
             Ok(res)
         }
+
+        fn $maker() -> core::Function {
+            let args = List::from_rev_iter(vec![$( Symbol::new(stringify!($arg)), )*]);
+            let restarg = Some(Symbol::new(stringify!($vararg)));
+            core::Function::new_native(args , restarg, core::NativeFnWrapper($id))
+        }
     }
 }
 
 define_native_fn! {
+    make_cons,
     native_cons(_env, item: identity_converter, list: core::to_list) -> LispObject::List {
         list.cons(item.clone())
     }
+
 }
 
 fn native_bool_to_lisp_bool(b: bool) -> LispObject {
@@ -83,6 +75,7 @@ fn native_bool_to_lisp_bool(b: bool) -> LispObject {
 }
 
 define_native_fn! {
+    make_stdout_write,
     native_stdout_write(_env, s: core::to_string) -> identity {
         write!(std::io::stdout(), "{}", s)?;
         LispObject::nil()
@@ -90,6 +83,7 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    make_print,
     native_print(_env, x: identity_converter) -> identity {
         print!("{}", &x);
         x.clone()
@@ -97,6 +91,7 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    make_println,
     native_println(_env, x: identity_converter) -> identity {
         println!("{}", &x);
         x.clone()
@@ -123,10 +118,19 @@ fn native_apply(env: core::Env, args: List<LispObject>) -> LispObjectResult {
         args = args.cons_rc(x);
     }
 
-    eval::call_function_object(env, f, args, false)
+    eval::call_function_object(env, f, args, false, None)
+}
+
+fn make_apply() -> core::Function {
+    core::Function::new_native(
+        List::empty().cons(Symbol::new("fn")),
+        Some(Symbol::new("args")),
+        core::NativeFnWrapper(native_apply),
+    )
 }
 
 define_native_fn! {
+    make_add,
     native_add(_env, ... args: core::to_i64) -> LispObject::Integer {
         let mut res = 0;
         for arg in args.iter() {
@@ -137,6 +141,7 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    make_sub,
     native_sub(_env, from: core::to_i64, ... args: core::to_i64) -> LispObject::Integer {
         let mut res = *from;
 
@@ -153,6 +158,7 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    make_mul,
     native_mul(_env, ... args: core::to_i64) -> LispObject::Integer {
         let mut res = 1;
         for arg in args.iter() {
@@ -163,24 +169,28 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    make_lt,
     native_lt(_env, x: core::to_i64, y: core::to_i64) -> identity {
         native_bool_to_lisp_bool(x < y)
     }
 }
 
 define_native_fn! {
+    make_gt,
     native_gt(_env, x: core::to_i64, y: core::to_i64) -> identity {
         native_bool_to_lisp_bool(x > y)
     }
 }
 
 define_native_fn! {
+    make_equal,
     native_equal(_env, x: identity_converter, y: identity_converter) -> identity {
         native_bool_to_lisp_bool(*x == *y)
     }
 }
 
 define_native_fn! {
+    make_first,
     native_first(_env, list: core::to_list) -> identity {
         let first = list.first()
             .ok_or_else(|| error::GenericError::new(
@@ -190,12 +200,14 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    make_rest,
     native_rest(_env, list: core::to_list) -> LispObject::List {
         list.tail()
     }
 }
 
 define_native_fn! {
+    make_listp,
     native_listp(_env, arg: identity_converter) -> identity {
         let converted = core::to_list(arg);
         native_bool_to_lisp_bool(converted.is_ok())
@@ -203,12 +215,14 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    make_emptyp,
     native_emptyp(_env, arg: core::to_list) -> identity {
         native_bool_to_lisp_bool(arg.is_empty())
     }
 }
 
 define_native_fn! {
+    make_symbolp,
     native_symbolp(_env, arg: identity_converter) -> identity {
         let converted = core::to_symbol(arg);
         native_bool_to_lisp_bool(converted.is_ok())
@@ -216,6 +230,7 @@ define_native_fn! {
 }
 
 define_native_fn! {
+    make_macroexpand,
     native_macroexpand(env, arg: identity_converter) -> identity {
         match arg {
             LispObject::List(ref list) if !list.is_empty() => {
@@ -223,7 +238,7 @@ define_native_fn! {
                     LispObject::Symbol(s) => {
                         eval::lookup_symbol_macro(&env, s)
                             .map_or_else(|| Ok(arg.clone()),
-                                         |macro_fn| eval::call_function_object(env, &macro_fn, list.tail(), false))?
+                                         |macro_fn| eval::call_function_object(env, &macro_fn, list.tail(), false, Some(s)))?
                     }
                     _ => arg.clone()
                 }
@@ -234,34 +249,31 @@ define_native_fn! {
 }
 
 pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
-    let mut set = |name: &str, f| {
-        global_env.fn_env.insert(
-            Symbol::new(name),
-            core::Function::NativeFunction(core::NativeFnWrapper(f)),
-        );
+    let mut save = |name, maker: fn() -> core::Function| {
+        global_env.fn_env.insert(Symbol::new(name), maker());
     };
 
-    set("cons", native_cons);
-    set("first", native_first);
-    set("rest", native_rest);
-    set("equal", native_equal);
-    set("apply", native_apply);
+    save("cons", make_cons);
+    save("first", make_first);
+    save("rest", make_rest);
+    save("equal", make_equal);
+    save("apply", make_apply);
 
-    set("+", native_add);
-    set("-", native_sub);
-    set("*", native_mul);
-    set("<", native_lt);
-    set(">", native_gt);
+    save("+", make_add);
+    save("-", make_sub);
+    save("*", make_mul);
+    save("<", make_lt);
+    save(">", make_gt);
 
-    set("listp", native_listp);
-    set("emptyp", native_emptyp);
-    set("symbolp", native_symbolp);
+    save("listp", make_listp);
+    save("emptyp", make_emptyp);
+    save("symbolp", make_symbolp);
 
-    set("print", native_print);
-    set("println", native_println);
-    set("stdout-write", native_stdout_write);
+    save("print", make_print);
+    save("println", make_println);
+    save("stdout-write", make_stdout_write);
 
-    set("macroexpand-1", native_macroexpand);
+    save("macroexpand-1", make_macroexpand);
 }
 
 #[cfg(test)]

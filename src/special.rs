@@ -138,12 +138,10 @@ fn lambda_form(_env: Env, args: List<LispObject>) -> LispObjectResult {
         body,
     } = parse_lambda(&args)?;
 
-    Ok(LispObject::Fn(core::Function::InterpretedFunction(
-        core::InterpretedFn {
-            arglist: simple_args,
-            body: body,
-            restarg: restarg,
-        },
+    Ok(LispObject::Fn(core::Function::new_interpreted(
+        simple_args,
+        restarg,
+        body,
     )))
 }
 
