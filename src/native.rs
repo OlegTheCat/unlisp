@@ -27,9 +27,10 @@ macro_rules! define_native_fn {
             Ok(res)
         }
 
-        fn $maker() -> core::Function {
+        fn $maker(name: impl Into<String>) -> core::Function {
+            let name = Some(Symbol::new(name));
             let args = List::from_rev_iter(vec![$( Symbol::new(stringify!($arg)), )*]);
-            core::Function::new_native(args , None, core::NativeFnWrapper($id))
+            core::Function::new_native(name, args , None, core::NativeFnWrapper($id))
         }
 
     };
@@ -50,10 +51,11 @@ macro_rules! define_native_fn {
             Ok(res)
         }
 
-        fn $maker() -> core::Function {
+        fn $maker(name: impl Into<String>) -> core::Function {
+            let name = Some(Symbol::new(name));
             let args = List::from_rev_iter(vec![$( Symbol::new(stringify!($arg)), )*]);
             let restarg = Some(Symbol::new(stringify!($vararg)));
-            core::Function::new_native(args , restarg, core::NativeFnWrapper($id))
+            core::Function::new_native(name, args , restarg, core::NativeFnWrapper($id))
         }
     }
 }
@@ -121,8 +123,9 @@ fn native_apply(env: core::Env, args: List<LispObject>) -> LispObjectResult {
     eval::call_function_object(env, f, args, false, None)
 }
 
-fn make_apply() -> core::Function {
+fn make_apply(name: impl Into<String>) -> core::Function {
     core::Function::new_native(
+        Some(Symbol::new(name)),
         List::empty().cons(Symbol::new("fn")),
         Some(Symbol::new("args")),
         core::NativeFnWrapper(native_apply),
@@ -249,8 +252,10 @@ define_native_fn! {
 }
 
 pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
-    let mut save = |name, maker: fn() -> core::Function| {
-        global_env.fn_env.insert(Symbol::new(name), maker());
+    let mut save = |name: &str, maker: fn(String) -> core::Function| {
+        global_env
+            .fn_env
+            .insert(Symbol::new(name), maker(name.to_string()));
     };
 
     save("cons", make_cons);

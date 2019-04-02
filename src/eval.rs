@@ -49,12 +49,22 @@ pub fn call_function_object(
     if (args.len() < function.arglist.len())
         || (!has_restarg && function.arglist.len() != args.len())
     {
-        let render_lambda = || {
+        let render_signature = || {
             let mut arglist = function
                 .arglist
                 .iter()
                 .map(|s| LispObject::Symbol(s.clone()))
                 .collect::<Vec<_>>();
+
+            let name_padded = function
+                .name
+                .as_ref()
+                .map_or("".to_string(), |s| format!("{} ", s.name()));
+
+            let body = match function.body {
+                core::FunctionBody::Native(_) => "<native code>",
+                core::FunctionBody::Interpreted(_) => "...",
+            };
 
             if let Some(ref restarg) = function.restarg {
                 arglist.push(LispObject::Symbol(Symbol::new("&")));
@@ -62,7 +72,7 @@ pub fn call_function_object(
             }
 
             let arglist = LispObject::List(List::from_rev_iter(arglist));
-            format!("(lambda {} ...)", arglist)
+            format!("(lambda {}{} {})", name_padded, arglist, body)
         };
 
         let expected = function.arglist.len();
@@ -72,7 +82,7 @@ pub fn call_function_object(
             expected,
             actual,
             has_restarg,
-            name_hint.map(Symbol::name).unwrap_or_else(render_lambda),
+            name_hint.map(Symbol::name).unwrap_or_else(render_signature),
         ))?
     }
 

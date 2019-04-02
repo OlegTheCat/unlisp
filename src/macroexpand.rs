@@ -37,14 +37,29 @@ pub fn macroexpand_all(env: Env, form: &LispObject) -> LispObjectResult {
                     Ok(LispObject::List(list.clone()))
                 }
                 LispObject::Symbol(s) if *s == Symbol::new("lambda") => {
-                    let lambda_forms = &list.tail();
-                    special::parse_lambda(&lambda_forms)?;
+                    let special::ParsedLambda { name, body, .. } =
+                        special::parse_lambda(&list.tail())?;
 
-                    let expanded_body = macroexpand_list(&env, &lambda_forms.tail())?;
-                    let lambda_form = expanded_body
-                        .cons_rc(lambda_forms.first_rc().unwrap().clone())
-                        .cons_rc(list.first_rc().unwrap().clone());
-                    Ok(LispObject::List(lambda_form))
+                    let expanded_body = macroexpand_list(&env, &body)?;
+
+                    let mut to_recons = vec![];
+                    let lambda_form_iter = list.rc_iter();
+
+                    if name.is_some() {
+                        // reconsing lambda symbol, arglist and name
+                        to_recons.extend(lambda_form_iter.take(3));
+                    } else {
+                        // reconsing lambda symbol and name
+                        to_recons.extend(lambda_form_iter.take(2));
+                    }
+
+                    let mut reconsed_lambda = expanded_body;
+
+                    for el in to_recons.into_iter().rev() {
+                        reconsed_lambda = reconsed_lambda.cons_rc(el);
+                    }
+
+                    Ok(LispObject::List(reconsed_lambda))
                 }
                 LispObject::Symbol(s) if *s == Symbol::new("let") => {
                     let let_forms = list.tail();

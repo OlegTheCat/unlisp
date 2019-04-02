@@ -111,6 +111,7 @@ pub enum FunctionBody {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Function {
+    pub name: Option<Symbol>,
     pub arglist: List<Symbol>,
     pub restarg: Option<Symbol>,
     pub body: FunctionBody,
@@ -118,11 +119,13 @@ pub struct Function {
 
 impl Function {
     pub fn new_interpreted(
+        name: Option<Symbol>,
         arglist: List<Symbol>,
         restarg: Option<Symbol>,
         body: List<LispObject>,
     ) -> Self {
         Self {
+            name: name,
             arglist: arglist,
             restarg: restarg,
             body: FunctionBody::Interpreted(body),
@@ -130,11 +133,13 @@ impl Function {
     }
 
     pub fn new_native(
+        name: Option<Symbol>,
         arglist: List<Symbol>,
         restarg: Option<Symbol>,
         body: NativeFnWrapper,
     ) -> Self {
         Self {
+            name: name,
             arglist: arglist,
             restarg: restarg,
             body: FunctionBody::Native(body),

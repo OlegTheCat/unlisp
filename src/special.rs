@@ -79,6 +79,7 @@ fn let_form(env: Env, args: List<LispObject>) -> LispObjectResult {
 }
 
 pub struct ParsedLambda {
+    pub name: Option<Symbol>,
     pub simple_args: List<Symbol>,
     pub restarg: Option<Symbol>,
     pub body: List<LispObject>,
@@ -106,9 +107,23 @@ fn parse_arglist(arglist: Vec<Symbol>) -> GenResult<(List<Symbol>, Option<Symbol
 }
 
 pub fn parse_lambda(args: &List<LispObject>) -> GenResult<ParsedLambda> {
-    let arglist = args
-        .first()
-        .ok_or_else(|| SyntaxError::new("no arglist in lambda"))?;
+    let no_arglist = || SyntaxError::new("no arglist in lambda");
+
+    let name_or_arglist = args.first().ok_or_else(no_arglist)?;
+
+    let mut name = None;
+    let arglist;
+    let body;
+
+    if let Ok(sym) = core::to_symbol(name_or_arglist) {
+        name = Some(sym.clone());
+        arglist = args.iter().nth(1).ok_or_else(no_arglist)?;
+        body = args.tailn(2);
+    } else {
+        arglist = name_or_arglist;
+        body = args.tail()
+    }
+
     let arglist =
         core::to_list(arglist).map_err(|_e| SyntaxError::new("lambda arglist in not a list"))?;
     let arglist = arglist
@@ -122,9 +137,8 @@ pub fn parse_lambda(args: &List<LispObject>) -> GenResult<ParsedLambda> {
 
     let (simple_args, restarg) = parse_arglist(arglist)?;
 
-    let body = args.tail();
-
     Ok(ParsedLambda {
+        name: name,
         simple_args: simple_args,
         restarg: restarg,
         body: body,
@@ -133,12 +147,14 @@ pub fn parse_lambda(args: &List<LispObject>) -> GenResult<ParsedLambda> {
 
 fn lambda_form(_env: Env, args: List<LispObject>) -> LispObjectResult {
     let ParsedLambda {
+        name,
         simple_args,
         restarg,
         body,
     } = parse_lambda(&args)?;
 
     Ok(LispObject::Fn(core::Function::new_interpreted(
+        name,
         simple_args,
         restarg,
         body,
@@ -273,9 +289,12 @@ mod tests {
         assert_err!(ctx, "(lambda)", error::SyntaxError);
         assert_err!(ctx, "(lambda 1)", error::SyntaxError);
         assert_err!(ctx, "(lambda (1))", error::SyntaxError);
+        assert_err!(ctx, "(lambda foo)", error::SyntaxError);
+        assert_err!(ctx, "(lambda foo (1))", error::SyntaxError);
 
         // lambda behavior is tested in test_set_fn
         assert!(core::to_function(&ctx.ok_eval("(lambda (x) x)")).is_ok());
+        assert!(core::to_function(&ctx.ok_eval("(lambda foo (x) x)")).is_ok());
     }
 
     #[test]

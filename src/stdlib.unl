@@ -1,22 +1,22 @@
 (set-fn
  list
- (lambda (& args)
+ (lambda list (& args)
    args))
 
 (set-fn
  list*
- (lambda (& args)
+ (lambda list* (& args)
    (apply (symbol-function apply)
           (symbol-function list) args)))
 
 (set-fn
  funcall
- (lambda (f & args)
+ (lambda funcall (f & args)
    (apply f args)))
 
 (set-fn
  append
- (lambda (x y)
+ (lambda append (x y)
    (if (emptyp x)
        y
        (cons (first x)
@@ -24,7 +24,7 @@
 
 (set-fn
  reduce
- (lambda (f init list)
+ (lambda reduce (f init list)
    (if (emptyp list)
        init
        (reduce
@@ -43,32 +43,32 @@
 
 (set-fn
  reverse
- (lambda (x)
+ (lambda reverse (x)
    (reverse-inner x ())))
 
 (set-fn
  not
- (lambda (x)
+ (lambda not (x)
    (if x nil t)))
 
 (set-macro-fn
  unq
- (lambda (x)
+ (lambda unq (x)
    (error "unq outside of qquote")))
 
 (set-macro-fn
  unqs
- (lambda (x)
+ (lambda unqs (x)
    (error "unqs outside of qquote")))
 
 (set-macro-fn
  qquote
- (lambda (x)
+ (lambda quote (x)
    (qquote-process x)))
 
 (set-fn
  qquote-process
- (lambda (x)
+ (lambda qquote-process (x)
    (if (not (listp x))
        (list (quote quote) x)
        (if (emptyp x)
@@ -83,12 +83,12 @@
 
 (set-fn
  qquote-transform-list
- (lambda (x)
+ (lambda qquote-transform-list (x)
    (qquote-transform-list-inner x ())))
 
 (set-fn
  qquote-transform-list-inner
- (lambda (x transformed-acc)
+ (lambda qquote-transform-list-inner (x transformed-acc)
    (if (emptyp x)
        (list* (quote reduce) (quote (lambda (x y) (append x y)))
               ()
@@ -100,7 +100,7 @@
 
 (set-fn
  qquote-transform-list-item
- (lambda (x)
+ (lambda qquote-transform-list-item (x)
    (if (not (listp x))
        (list (quote list) (list (quote quote) x))
        (if (emptyp x)
@@ -113,18 +113,18 @@
 
 (set-macro-fn
  defmacro
- (lambda (name args & body)
+ (lambda defmacro (name args & body)
    (qquote
     (set-macro-fn
      (unq name)
-     (lambda (unq args)
+     (lambda (unq name) (unq args)
        (unqs body))))))
 
 (defmacro defun (name args & body)
   (qquote
    (set-fn
     (unq name)
-    (lambda (unq args)
+    (lambda (unq name) (unq args)
       (unqs body)))))
 
 (defun fibo (n)
