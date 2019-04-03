@@ -31,8 +31,8 @@ pub fn eval_stdlib(env: &core::Env) {
 }
 
 pub fn init_env(env: &mut core::Env) {
-    special::prepare_specials(&mut env.global_env_mut());
-    native::prepare_native_stdlib(&mut env.global_env_mut());
+    special::prepare_specials(env);
+    native::prepare_natives(env);
     eval_stdlib(env);
 }
 

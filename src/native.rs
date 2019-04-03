@@ -21,7 +21,7 @@ macro_rules! define_native_fn {
         fn $id( $env: core::Env, args: List<LispObject> ) -> LispObjectResult {
             let mut args = args.iter();
 
-            $( let mut $arg = $converter(args.next().unwrap())?; )*
+            $( let $arg = $converter(args.next().unwrap())?; )*
 
             let res = $result_wrap($body);
             Ok(res)
@@ -38,12 +38,11 @@ macro_rules! define_native_fn {
     ($maker:ident, $id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
         fn $id( $env: core::Env, args: List<LispObject> ) -> LispObjectResult {
-
             let mut args = args.iter();
 
-            $( #[allow(unused_mut)] let mut $arg = $converter(args.next().unwrap())?; )*
+            $(  let $arg = $converter(args.next().unwrap())?; )*
 
-            let mut $vararg: List<_> = args
+            let $vararg = args
                 .map(|lo| $vconverter(lo))
                 .collect::<Result<List<_>, _>>()?;
 
@@ -102,7 +101,7 @@ define_native_fn! {
 
 fn native_apply(env: core::Env, args: List<LispObject>) -> LispObjectResult {
     if args.len() <= 1 {
-        Err(error::ArityError::new(2, 1, true, "apply".to_string()))?
+        Err(error::ArityError::new(2, 1, true, "apply"))?
     }
 
     let f = core::to_function(args.first().unwrap())?;
@@ -197,7 +196,7 @@ define_native_fn! {
     native_first(_env, list: core::to_list) -> identity {
         let first = list.first()
             .ok_or_else(|| error::GenericError::new(
-                "cannot do first on empty list".to_string()))?;
+                "cannot do first on empty list"))?;
         first.clone()
     }
 }
@@ -251,9 +250,9 @@ define_native_fn! {
     }
 }
 
-pub fn prepare_native_stdlib(global_env: &mut core::GlobalEnvFrame) {
-    let mut save = |name: &str, maker: fn(String) -> core::Function| {
-        global_env
+pub fn prepare_natives(env: &mut core::Env) {
+    let save = |name: &str, maker: fn(String) -> core::Function| {
+        env.global_env_mut()
             .fn_env
             .insert(Symbol::new(name), maker(name.to_string()));
     };

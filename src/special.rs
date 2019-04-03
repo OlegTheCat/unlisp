@@ -233,9 +233,9 @@ fn symbol_function(env: Env, args: List<LispObject>) -> LispObjectResult {
     Ok(LispObject::Fn(f))
 }
 
-pub fn prepare_specials(global_env: &mut core::GlobalEnvFrame) {
-    let mut set = |s: &str, f| {
-        global_env
+pub fn prepare_specials(env: &mut Env) {
+    let set = |s: &str, f| {
+        env.global_env_mut()
             .special_env
             .insert(Symbol::new(s), core::NativeFnWrapper(f));
     };

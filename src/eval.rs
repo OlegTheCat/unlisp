@@ -122,9 +122,9 @@ fn call_symbol(env: Env, form: &LispObject) -> LispObjectResult {
     let spec = env.global_env().special_env.get(sym).map(|f| f.clone());
 
     if let Some(f) = spec {
-        f.0(env.clone(), args)
+        f.0(env, args)
     } else if let Some(ref f) = lookup_symbol_function(&env, sym) {
-        call_function_object(env.clone(), f, args, true, Some(sym))
+        call_function_object(env, f, args, true, Some(sym))
     } else {
         Err(error::UndefinedSymbol::new(sym.name(), true))?
     }

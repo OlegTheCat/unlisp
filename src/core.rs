@@ -18,8 +18,8 @@ macro_rules! define_unwrapper {
             match arg {
                 $enum::$from(x) => Ok(x),
                 x => Err(error::CastError::new(
-                    format!("{}", x).to_string(),
-                    stringify!($to).to_string(),
+                    format!("{}", x),
+                    stringify!($to),
                 )),
             }
         }
@@ -33,8 +33,8 @@ macro_rules! define_unwrapper_owned {
             match arg {
                 $enum::$from(x) => Ok(x),
                 x => Err(error::CastError::new(
-                    format!("{}", x).to_string(),
-                    stringify!($to).to_string(),
+                    format!("{}", x),
+                    stringify!($to),
                 )),
             }
         }

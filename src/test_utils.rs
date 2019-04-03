@@ -15,14 +15,14 @@ pub struct Context {
 
 impl Context {
     pub fn new(load_specials: bool, load_natives: bool, load_stdlib: bool) -> Self {
-        let env = Env::new();
+        let mut env = Env::new();
 
         if load_specials {
-            special::prepare_specials(&mut env.global_env_mut());
+            special::prepare_specials(&mut env);
         }
 
         if load_natives {
-            native::prepare_native_stdlib(&mut env.global_env_mut());
+            native::prepare_natives(&mut env);
         }
 
         if load_stdlib {
