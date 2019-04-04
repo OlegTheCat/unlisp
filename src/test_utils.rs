@@ -1,9 +1,10 @@
 #![macro_use]
 
 use crate::common;
-use crate::core::*;
+use crate::env::Env;
 use crate::error;
 use crate::native;
+use crate::object::*;
 use crate::reader::Reader;
 use crate::special;
 use std::cell::RefCell;

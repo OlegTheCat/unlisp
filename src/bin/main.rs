@@ -6,7 +6,8 @@ use std::io::Write;
 use std::thread;
 
 use unlisp::common::*;
-use unlisp::core;
+use unlisp::env;
+use unlisp::object;
 use unlisp::reader;
 
 fn repl() {

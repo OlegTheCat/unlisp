@@ -1,12 +1,12 @@
 use crate::cons::List;
-use crate::core;
-use crate::core::Env;
-use crate::core::LispObject;
-use crate::core::LispObjectResult;
-use crate::core::Symbol;
+use crate::env::Env;
 use crate::error::*;
 use crate::eval;
 use crate::eval::eval;
+use crate::object;
+use crate::object::LispObject;
+use crate::object::LispObjectResult;
+use crate::object::Symbol;
 
 pub struct ParsedQuote(pub LispObject);
 
@@ -32,18 +32,18 @@ pub fn parse_let<'a>(args: &'a List<LispObject>) -> GenResult<ParsedLet<'a>> {
         .first()
         .ok_or_else(|| (SyntaxError::new("no bindings in let")))?;
     let bindings =
-        core::to_list(bindings).map_err(|_e| SyntaxError::new("let bindings are not a list"))?;
+        object::to_list(bindings).map_err(|_e| SyntaxError::new("let bindings are not a list"))?;
 
     let mut collected_bindings = vec![];
 
     for binding in bindings.iter() {
         let binding =
-            core::to_list(binding).map_err(|_e| SyntaxError::new("let binding is not a list"))?;
+            object::to_list(binding).map_err(|_e| SyntaxError::new("let binding is not a list"))?;
         let mut binding_iter = binding.iter();
         let sym = binding_iter
             .next()
             .ok_or_else(|| SyntaxError::new("empty binding clause"))?;
-        let sym = core::to_symbol(sym)
+        let sym = object::to_symbol(sym)
             .map_err(|_e| SyntaxError::new("not a symbol in binding clause"))?;
 
         let val_form = binding_iter
@@ -115,7 +115,7 @@ pub fn parse_lambda(args: &List<LispObject>) -> GenResult<ParsedLambda> {
     let arglist;
     let body;
 
-    if let Ok(sym) = core::to_symbol(name_or_arglist) {
+    if let Ok(sym) = object::to_symbol(name_or_arglist) {
         name = Some(sym.clone());
         arglist = args.iter().nth(1).ok_or_else(no_arglist)?;
         body = args.tailn(2);
@@ -125,11 +125,11 @@ pub fn parse_lambda(args: &List<LispObject>) -> GenResult<ParsedLambda> {
     }
 
     let arglist =
-        core::to_list(arglist).map_err(|_e| SyntaxError::new("lambda arglist in not a list"))?;
+        object::to_list(arglist).map_err(|_e| SyntaxError::new("lambda arglist in not a list"))?;
     let arglist = arglist
         .iter()
         .map(|lo| {
-            core::to_symbol(lo)
+            object::to_symbol(lo)
                 .map(|s| s.clone())
                 .map_err(|_e| SyntaxError::new("expected symbol in arglist"))
         })
@@ -153,7 +153,7 @@ fn lambda_form(_env: Env, args: List<LispObject>) -> LispObjectResult {
         body,
     } = parse_lambda(&args)?;
 
-    Ok(LispObject::Fn(core::Function::new_interpreted(
+    Ok(LispObject::Fn(object::Function::new_interpreted(
         name,
         simple_args,
         restarg,
@@ -166,12 +166,12 @@ fn set_fn(env: Env, args: List<LispObject>) -> LispObjectResult {
     let sym = args
         .next()
         .ok_or_else(|| SyntaxError::new("no symbol in set-fn"))?;
-    let sym = core::to_symbol(sym).map_err(|_e| SyntaxError::new("not a symbol in set-fn"))?;
+    let sym = object::to_symbol(sym).map_err(|_e| SyntaxError::new("not a symbol in set-fn"))?;
 
     let func = args
         .next()
         .ok_or_else(|| SyntaxError::new("no function in set-fn"))?;
-    let func = core::to_function_owned(eval(env.clone(), &func)?)?;
+    let func = object::to_function_owned(eval(env.clone(), &func)?)?;
 
     env.global_env_mut().fn_env.insert(sym.clone(), func);
     Ok(LispObject::nil())
@@ -183,12 +183,12 @@ fn set_macro_fn(env: Env, args: List<LispObject>) -> LispObjectResult {
         .next()
         .ok_or_else(|| SyntaxError::new("no symbol in set-macro-fn"))?;
     let sym =
-        core::to_symbol(sym).map_err(|_e| SyntaxError::new("not a symbol in set-macro-fn"))?;
+        object::to_symbol(sym).map_err(|_e| SyntaxError::new("not a symbol in set-macro-fn"))?;
 
     let func = args
         .next()
         .ok_or_else(|| SyntaxError::new("no function in set-macro-fn"))?;
-    let func = core::to_function_owned(eval(env.clone(), &func)?)?;
+    let func = object::to_function_owned(eval(env.clone(), &func)?)?;
 
     env.global_env_mut().macro_env.insert(sym.clone(), func);
     Ok(LispObject::nil())
@@ -218,7 +218,7 @@ fn raise_error(_env: Env, args: List<LispObject>) -> LispObjectResult {
     let arg_form = args
         .next()
         .ok_or_else(|| SyntaxError::new("no arg in error"))?;
-    let arg = core::to_string(arg_form)?;
+    let arg = object::to_string(arg_form)?;
     Err(Box::new(GenericError::new(arg.clone())))
 }
 
@@ -227,7 +227,7 @@ fn symbol_function(env: Env, args: List<LispObject>) -> LispObjectResult {
     let arg = args
         .next()
         .ok_or_else(|| SyntaxError::new("no arg in symbol-function"))?;
-    let arg = core::to_symbol(arg)?;
+    let arg = object::to_symbol(arg)?;
     let f = eval::lookup_symbol_function(&env, &arg)
         .ok_or_else(|| UndefinedSymbol::new(arg.name(), true))?;
     Ok(LispObject::Fn(f))
@@ -237,7 +237,7 @@ pub fn prepare_specials(env: &mut Env) {
     let set = |s: &str, f| {
         env.global_env_mut()
             .special_env
-            .insert(Symbol::new(s), core::NativeFnWrapper(f));
+            .insert(Symbol::new(s), object::NativeFnWrapper(f));
     };
 
     set("quote", quote_form);
@@ -252,8 +252,8 @@ pub fn prepare_specials(env: &mut Env) {
 
 #[cfg(test)]
 mod tests {
-    use crate::core;
     use crate::error;
+    use crate::object;
     use crate::test_utils::*;
 
     fn ctx() -> Context {
@@ -293,8 +293,8 @@ mod tests {
         assert_err!(ctx, "(lambda foo (1))", error::SyntaxError);
 
         // lambda behavior is tested in test_set_fn
-        assert!(core::to_function(&ctx.ok_eval("(lambda (x) x)")).is_ok());
-        assert!(core::to_function(&ctx.ok_eval("(lambda foo (x) x)")).is_ok());
+        assert!(object::to_function(&ctx.ok_eval("(lambda (x) x)")).is_ok());
+        assert!(object::to_function(&ctx.ok_eval("(lambda foo (x) x)")).is_ok());
     }
 
     #[test]
@@ -365,7 +365,7 @@ mod tests {
         assert_err!(ctx, "(symbol-function)", error::SyntaxError);
         assert_err!(ctx, "(symbol-function 1)", error::CastError);
 
-        assert!(core::to_function(
+        assert!(object::to_function(
             &ctx.ok_eval("(set-fn foo (lambda (x) x)) (symbol-function foo)")
         )
         .is_ok());

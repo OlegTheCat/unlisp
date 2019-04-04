@@ -1,10 +1,10 @@
 use crate::cons::List;
-use crate::core::Env;
-use crate::core::LispObject;
-use crate::core::LispObjectResult;
-use crate::core::Symbol;
+use crate::env::Env;
 use crate::error;
 use crate::eval;
+use crate::object::LispObject;
+use crate::object::LispObjectResult;
+use crate::object::Symbol;
 use crate::special;
 
 fn macroexpand_list(env: &Env, list: &List<LispObject>) -> error::GenResult<List<LispObject>> {

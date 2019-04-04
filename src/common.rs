@@ -1,20 +1,21 @@
-use crate::core;
+use crate::env;
 use crate::error;
 use crate::eval;
 use crate::macroexpand;
 use crate::native;
+use crate::object;
 use crate::reader;
 use crate::special;
 
 use std::fs;
 use std::io;
 
-pub fn macroexpand_and_eval(env: core::Env, form: &core::LispObject) -> core::LispObjectResult {
+pub fn macroexpand_and_eval(env: env::Env, form: &object::LispObject) -> object::LispObjectResult {
     let expanded = macroexpand::macroexpand_all(env.clone(), form)?;
     eval::eval(env, &expanded)
 }
 
-pub fn eval_stdlib(env: &core::Env) {
+pub fn eval_stdlib(env: &env::Env) {
     let mut file = fs::File::open("src/stdlib.unl").expect("stdlib file not found");
 
     let mut reader = reader::Reader::create(&mut file);
@@ -30,7 +31,7 @@ pub fn eval_stdlib(env: &core::Env) {
     }
 }
 
-pub fn init_env(env: &mut core::Env) {
+pub fn init_env(env: &mut env::Env) {
     special::prepare_specials(env);
     native::prepare_natives(env);
     eval_stdlib(env);

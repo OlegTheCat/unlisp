@@ -1,10 +1,10 @@
 use crate::cons::List;
-use crate::core;
-use crate::core::Env;
-use crate::core::LispObject;
-use crate::core::LispObjectResult;
-use crate::core::Symbol;
+use crate::env::Env;
 use crate::error;
+use crate::object;
+use crate::object::LispObject;
+use crate::object::LispObjectResult;
+use crate::object::Symbol;
 
 macro_rules! lookup_symbol {
     ($env:ident, $lookup_env:ident, $sym:expr) => {{
@@ -21,17 +21,17 @@ pub fn lookup_symbol_value(env: &Env, s: &Symbol) -> Option<LispObject> {
     lookup_symbol!(env, sym_env, s)
 }
 
-pub fn lookup_symbol_function(env: &Env, s: &Symbol) -> Option<core::Function> {
+pub fn lookup_symbol_function(env: &Env, s: &Symbol) -> Option<object::Function> {
     lookup_symbol!(env, fn_env, s)
 }
 
-pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<core::Function> {
+pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<object::Function> {
     lookup_symbol!(env, macro_env, s)
 }
 
 pub fn call_function_object(
     env: Env,
-    function: &core::Function,
+    function: &object::Function,
     args: List<LispObject>,
     eval_args: bool,
     name_hint: Option<&Symbol>,
@@ -62,8 +62,8 @@ pub fn call_function_object(
                 .map_or("".to_string(), |s| format!("{} ", s.name()));
 
             let body = match function.body {
-                core::FunctionBody::Native(_) => "<native code>",
-                core::FunctionBody::Interpreted(_) => "...",
+                object::FunctionBody::Native(_) => "<native code>",
+                object::FunctionBody::Interpreted(_) => "...",
             };
 
             if let Some(ref restarg) = function.restarg {
@@ -87,8 +87,8 @@ pub fn call_function_object(
     }
 
     match function.body {
-        core::FunctionBody::Native(ref native_body) => native_body.0(env, args),
-        core::FunctionBody::Interpreted(ref interpreted_body) => {
+        object::FunctionBody::Native(ref native_body) => native_body.0(env, args),
+        object::FunctionBody::Interpreted(ref interpreted_body) => {
             let mut args = args.iter();
 
             let mut new_env = env.clone();
@@ -115,8 +115,8 @@ pub fn call_function_object(
 }
 
 fn call_symbol(env: Env, form: &LispObject) -> LispObjectResult {
-    let form = core::to_list(form)?;
-    let sym = core::to_symbol(form.first().unwrap())?;
+    let form = object::to_list(form)?;
+    let sym = object::to_symbol(form.first().unwrap())?;
     let args = form.tail();
 
     let spec = env.global_env().special_env.get(sym).map(|f| f.clone());

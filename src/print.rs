@@ -1,6 +1,6 @@
 use crate::cons::List;
-use crate::core;
-use crate::core::LispObject;
+use crate::object;
+use crate::object::LispObject;
 use std::fmt;
 
 fn write_list(f: &mut fmt::Formatter, list: &List<LispObject>) -> Result<(), fmt::Error> {
@@ -18,22 +18,22 @@ fn write_list(f: &mut fmt::Formatter, list: &List<LispObject>) -> Result<(), fmt
     write!(f, ")")
 }
 
-impl fmt::Display for core::Function {
+impl fmt::Display for object::Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self.body {
-            core::FunctionBody::Native(_) => write!(f, "#<NATIVE-FN>"),
-            core::FunctionBody::Interpreted(_) => write!(f, "#<INTERPRETED-FN>"),
+            object::FunctionBody::Native(_) => write!(f, "#<NATIVE-FN>"),
+            object::FunctionBody::Interpreted(_) => write!(f, "#<INTERPRETED-FN>"),
         }
     }
 }
 
-impl fmt::Display for core::Symbol {
+impl fmt::Display for object::Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}", self.name())
     }
 }
 
-impl fmt::Display for core::LispObject {
+impl fmt::Display for object::LispObject {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             LispObject::List(list) if list.is_empty() => write!(f, "nil"),

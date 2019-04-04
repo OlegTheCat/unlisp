@@ -1,10 +1,10 @@
 use crate::cons::List;
-use crate::core::LispObject;
-use crate::core::LispObjectResult;
-use crate::core::Symbol;
 use crate::error::SyntaxError;
 use crate::lexer::Lexer;
 use crate::lexer::Token;
+use crate::object::LispObject;
+use crate::object::LispObjectResult;
+use crate::object::Symbol;
 
 use std::io::Read;
 
