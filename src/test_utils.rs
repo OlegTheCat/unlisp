@@ -7,8 +7,6 @@ use crate::native;
 use crate::object::*;
 use crate::reader::Reader;
 use crate::special;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 pub struct Context {
     env: Env,
@@ -38,10 +36,7 @@ impl Context {
     }
 
     fn env(&self) -> Env {
-        Env {
-            global_env: Rc::new(RefCell::new(self.env.global_env().clone())),
-            cur_env: self.env.cur_env.clone(),
-        }
+        self.env.clone_with_global()
     }
 
     pub fn eval(&self, s: impl Into<String>) -> LispObjectResult {

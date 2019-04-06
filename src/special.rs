@@ -1,7 +1,6 @@
 use crate::cons::List;
 use crate::env::Env;
 use crate::error::*;
-use crate::eval;
 use crate::eval::eval;
 use crate::object;
 use crate::object::LispObject;
@@ -66,7 +65,7 @@ fn let_form(env: Env, args: List<LispObject>) -> LispObjectResult {
 
     for (sym, val_form) in bindings {
         let val = eval(new_env.clone(), val_form)?;
-        new_env.cur_env.sym_env.insert(sym, val);
+        new_env.set_local_value(sym, val);
     }
 
     let mut res = LispObject::nil();
@@ -161,7 +160,7 @@ fn lambda_form(_env: Env, args: List<LispObject>) -> LispObjectResult {
     )))
 }
 
-fn set_fn(env: Env, args: List<LispObject>) -> LispObjectResult {
+fn set_fn(mut env: Env, args: List<LispObject>) -> LispObjectResult {
     let mut args = args.iter();
     let sym = args
         .next()
@@ -173,11 +172,11 @@ fn set_fn(env: Env, args: List<LispObject>) -> LispObjectResult {
         .ok_or_else(|| SyntaxError::new("no function in set-fn"))?;
     let func = object::to_function_owned(eval(env.clone(), &func)?)?;
 
-    env.global_env_mut().fn_env.insert(sym.clone(), func);
+    env.set_global_function(sym.clone(), func);
     Ok(LispObject::nil())
 }
 
-fn set_macro_fn(env: Env, args: List<LispObject>) -> LispObjectResult {
+fn set_macro_fn(mut env: Env, args: List<LispObject>) -> LispObjectResult {
     let mut args = args.iter();
     let sym = args
         .next()
@@ -190,7 +189,7 @@ fn set_macro_fn(env: Env, args: List<LispObject>) -> LispObjectResult {
         .ok_or_else(|| SyntaxError::new("no function in set-macro-fn"))?;
     let func = object::to_function_owned(eval(env.clone(), &func)?)?;
 
-    env.global_env_mut().macro_env.insert(sym.clone(), func);
+    env.set_global_macro(sym.clone(), func);
     Ok(LispObject::nil())
 }
 
@@ -228,16 +227,15 @@ fn symbol_function(env: Env, args: List<LispObject>) -> LispObjectResult {
         .next()
         .ok_or_else(|| SyntaxError::new("no arg in symbol-function"))?;
     let arg = object::to_symbol(arg)?;
-    let f = eval::lookup_symbol_function(&env, &arg)
+    let f = env
+        .lookup_symbol_function(&arg)
         .ok_or_else(|| UndefinedSymbol::new(arg.name(), true))?;
     Ok(LispObject::Fn(f))
 }
 
 pub fn prepare_specials(env: &mut Env) {
-    let set = |s: &str, f| {
-        env.global_env_mut()
-            .special_env
-            .insert(Symbol::new(s), object::NativeFnWrapper(f));
+    let mut set = |s: &str, f| {
+        env.set_global_special(Symbol::new(s), object::NativeFnWrapper(f));
     };
 
     set("quote", quote_form);

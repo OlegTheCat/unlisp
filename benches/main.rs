@@ -5,7 +5,8 @@ extern crate unlisp;
 use test::Bencher;
 
 use unlisp::common::*;
-use unlisp::core::{Env, LispObject};
+use unlisp::object::LispObject;
+use unlisp::env::Env;
 use unlisp::reader::Reader;
 
 fn read(s: impl Into<String>) -> LispObject {

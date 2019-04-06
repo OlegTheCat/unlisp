@@ -6,29 +6,6 @@ use crate::object::LispObject;
 use crate::object::LispObjectResult;
 use crate::object::Symbol;
 
-macro_rules! lookup_symbol {
-    ($env:ident, $lookup_env:ident, $sym:expr) => {{
-        let global = $env.global_env();
-        $env.cur_env
-            .$lookup_env
-            .get($sym)
-            .or_else(|| global.$lookup_env.get($sym))
-            .map(|v| v.clone())
-    }};
-}
-
-pub fn lookup_symbol_value(env: &Env, s: &Symbol) -> Option<LispObject> {
-    lookup_symbol!(env, sym_env, s)
-}
-
-pub fn lookup_symbol_function(env: &Env, s: &Symbol) -> Option<object::Function> {
-    lookup_symbol!(env, fn_env, s)
-}
-
-pub fn lookup_symbol_macro(env: &Env, s: &Symbol) -> Option<object::Function> {
-    lookup_symbol!(env, macro_env, s)
-}
-
 pub fn call_function_object(
     env: Env,
     function: &object::Function,
@@ -93,12 +70,12 @@ pub fn call_function_object(
 
             let mut new_env = env.clone();
             for (sym, val) in function.arglist.iter().zip(args.by_ref()) {
-                new_env.cur_env.sym_env.insert(sym.clone(), val.clone());
+                new_env.set_local_value(sym.clone(), val.clone());
             }
 
             if has_restarg {
                 let restarg = args.map(|lo| lo.clone()).collect();
-                new_env.cur_env.sym_env.insert(
+                new_env.set_local_value(
                     function.restarg.as_ref().unwrap().clone(),
                     LispObject::List(restarg),
                 );
@@ -119,11 +96,11 @@ fn call_symbol(env: Env, form: &LispObject) -> LispObjectResult {
     let sym = object::to_symbol(form.first().unwrap())?;
     let args = form.tail();
 
-    let spec = env.global_env().special_env.get(sym).map(|f| f.clone());
+    let spec = env.lookup_symbol_special(sym);
 
     if let Some(f) = spec {
         f.0(env, args)
-    } else if let Some(ref f) = lookup_symbol_function(&env, sym) {
+    } else if let Some(ref f) = env.lookup_symbol_function(sym) {
         call_function_object(env, f, args, true, Some(sym))
     } else {
         Err(error::UndefinedSymbol::new(sym.name(), true))?
@@ -139,7 +116,8 @@ pub fn eval(env: Env, form: &LispObject) -> LispObjectResult {
 
         LispObject::List(ref list) if list.is_empty() => Ok(LispObject::nil()),
         LispObject::Symbol(s) => {
-            let val = lookup_symbol_value(&env, &s)
+            let val = env
+                .lookup_symbol_value(&s)
                 .ok_or_else(|| error::UndefinedSymbol::new(s.name(), false))?;
             Ok(val)
         }

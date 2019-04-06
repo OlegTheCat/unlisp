@@ -84,7 +84,7 @@ pub fn macroexpand_all(env: Env, form: &LispObject) -> LispObjectResult {
                             .cons_rc(list.first_rc().unwrap().clone()),
                     ))
                 }
-                LispObject::Symbol(s) => match eval::lookup_symbol_macro(&env, s) {
+                LispObject::Symbol(s) => match env.lookup_symbol_macro(s) {
                     Some(ref f) => {
                         let expanded = eval::call_function_object(
                             env.clone(),

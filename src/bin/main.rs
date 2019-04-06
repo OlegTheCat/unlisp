@@ -7,7 +7,6 @@ use std::thread;
 
 use unlisp::common::*;
 use unlisp::env;
-use unlisp::object;
 use unlisp::reader;
 
 fn repl() {
@@ -16,7 +15,7 @@ fn repl() {
     print!(">>> ");
     io::stdout().flush().unwrap();
 
-    let mut env = core::Env::new();
+    let mut env = env::Env::new();
     init_env(&mut env);
 
     // let mut s = "(mapcar (symf add) (range 1000) (range 1000))".as_bytes();

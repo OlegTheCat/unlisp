@@ -239,7 +239,7 @@ define_native_fn! {
             LispObject::List(ref list) if !list.is_empty() => {
                 match list.ufirst() {
                     LispObject::Symbol(s) => {
-                        eval::lookup_symbol_macro(&env, s)
+                        env.lookup_symbol_macro(s)
                             .map_or_else(|| Ok(arg.clone()),
                                          |macro_fn| eval::call_function_object(env, &macro_fn, list.tail(), false, Some(s)))?
                     }
@@ -252,10 +252,8 @@ define_native_fn! {
 }
 
 pub fn prepare_natives(env: &mut env::Env) {
-    let save = |name: &str, maker: fn(String) -> object::Function| {
-        env.global_env_mut()
-            .fn_env
-            .insert(Symbol::new(name), maker(name.to_string()));
+    let mut save = |name: &str, maker: fn(String) -> object::Function| {
+        env.set_global_function(Symbol::new(name), maker(name.to_string()));
     };
 
     save("cons", make_cons);
