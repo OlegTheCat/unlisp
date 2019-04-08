@@ -12,17 +12,17 @@ use unlisp::reader;
 fn repl() {
     let mut stdin = io::stdin();
 
-    print!(">>> ");
-    io::stdout().flush().unwrap();
+    let prompt = || {
+        print!(">>> ");
+        io::stdout().flush().unwrap();
+    };
 
     let mut env = env::Env::new();
     init_env(&mut env);
 
-    // let mut s = "(mapcar (symf add) (range 1000) (range 1000))".as_bytes();
-    // let mut reader = reader::Reader::create(&mut s);
-
     let mut reader = reader::Reader::create(&mut stdin);
 
+    prompt();
     loop {
         match reader.read_form() {
             Ok(form) => match macroexpand_and_eval(env.clone(), &form) {
@@ -34,9 +34,7 @@ fn repl() {
             ref err @ Err(_) if is_gen_eof(err) => break,
             Err(ref e) => println!("reader error: {}", e),
         }
-
-        print!(">>> ");
-        io::stdout().flush().unwrap();
+        prompt();
     }
 }
 

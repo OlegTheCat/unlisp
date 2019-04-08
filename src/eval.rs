@@ -7,7 +7,7 @@ use crate::object::LispObjectResult;
 use crate::object::Symbol;
 
 pub fn call_function_object(
-    env: Env,
+    mut env: Env,
     function: &object::Function,
     args: List<LispObject>,
     eval_args: bool,
@@ -61,6 +61,11 @@ pub fn call_function_object(
             has_restarg,
             name_hint.map(Symbol::name).unwrap_or_else(render_signature),
         ))?
+    }
+
+    match name_hint {
+        Some(name) => env.push_stack_frame_name(name.clone()),
+        None => env.push_stack_frame_sig(function.name.clone(), function.arglist.clone()),
     }
 
     match function.body {

@@ -1,17 +1,24 @@
+use crate::cons::List;
 use crate::object::*;
 use im::HashMap;
-use im::Vector;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
+enum StackFrameDesignator {
+    Signature((Option<Symbol>, List<Symbol>)),
+    Name(Symbol),
+    Top,
+}
+
+#[derive(Debug, Clone)]
 struct LocalEnv {
     sym_env: HashMap<Symbol, LispObject>,
     fn_env: HashMap<Symbol, Function>,
     macro_env: HashMap<Symbol, Function>,
-    stack: Vector<String>,
+    stack: List<StackFrameDesignator>,
 }
 
 impl LocalEnv {
@@ -20,7 +27,7 @@ impl LocalEnv {
             sym_env: HashMap::new(),
             fn_env: HashMap::new(),
             macro_env: HashMap::new(),
-            stack: Vector::new()
+            stack: List::empty().cons(StackFrameDesignator::Top),
         }
     }
 }
@@ -114,5 +121,16 @@ impl Env {
 
     pub fn set_global_special(&mut self, s: Symbol, val: NativeFnWrapper) {
         self.global_env_mut().special_env.insert(s, val);
+    }
+
+    pub fn push_stack_frame_name(&mut self, name: Symbol) {
+        let cur_stack = &self.local_env.stack;
+        self.local_env.stack = cur_stack.cons(StackFrameDesignator::Name(name));
+    }
+
+    pub fn push_stack_frame_sig(&mut self, lambda_name: Option<Symbol>, arglist: List<Symbol>) {
+        let cur_stack = &self.local_env.stack;
+        self.local_env.stack =
+            cur_stack.cons(StackFrameDesignator::Signature((lambda_name, arglist)));
     }
 }
