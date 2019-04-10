@@ -292,81 +292,52 @@ mod tests {
     fn test_cons() {
         let ctx = ctx();
 
-        assert!(ctx
-            .err_eval("(cons)")
-            .downcast::<error::ArityError>()
-            .is_ok());
-        assert!(ctx
-            .err_eval("(cons 1)")
-            .downcast::<error::ArityError>()
-            .is_ok());
+        assert_err!(ctx, "(cons)", error::ArityError);
+        assert_err!(ctx, "(cons 1)", error::ArityError);
 
-        assert_eq!(ctx.ok_eval("(cons 1 nil)"), read("(1)"));
-        assert_eq!(ctx.ok_eval("(cons 1 ())"), read("(1)"));
-        assert_eq!(ctx.ok_eval("(cons 1 (quote (2 3)))"), read("(1 2 3)"));
-        assert_eq!(
-            ctx.ok_eval("(cons (quote (1 2 3)) (quote (2 3)))"),
-            read("((1 2 3) 2 3)")
-        );
+        assert_ok!(ctx, "(cons 1 nil)", "(1)");
+        assert_ok!(ctx, "(cons 1 ())", "(1)");
+        assert_ok!(ctx, "(cons 1 (quote (2 3)))", "(1 2 3)");
+        assert_ok!(ctx, "(cons (quote (1 2 3)) (quote (2 3)))", "((1 2 3) 2 3)");
     }
 
     #[test]
     fn test_first() {
         let ctx = ctx();
 
-        assert!(ctx
-            .err_eval("(first)")
-            .downcast::<error::ArityError>()
-            .is_ok());
-        assert!(ctx
-            .err_eval("(first nil)")
-            .downcast::<error::GenericError>()
-            .is_ok());
+        assert_err!(ctx, "(first)", error::ArityError);
+        assert_err!(ctx, "(first nil)", error::GenericError);
 
-        assert_eq!(ctx.ok_eval("(first (quote (1)))"), read("1"));
-        assert_eq!(ctx.ok_eval("(first (quote (1 2)))"), read("1"));
-        assert_eq!(ctx.ok_eval("(first (quote ((1 2 3) 2)))"), read("(1 2 3)"));
+        assert_ok!(ctx, "(first (quote (1)))", "1");
+        assert_ok!(ctx, "(first (quote (1 2)))", "1");
+        assert_ok!(ctx, "(first (quote ((1 2 3) 2)))", "(1 2 3)");
     }
 
     #[test]
     fn test_rest() {
         let ctx = ctx();
-        assert!(ctx
-            .err_eval("(rest)")
-            .downcast::<error::ArityError>()
-            .is_ok());
+        assert_err!(ctx, "(rest)", error::ArityError);
 
-        assert_eq!(ctx.ok_eval("(rest nil)"), read("nil"));
-        assert_eq!(ctx.ok_eval("(rest (quote (1)))"), read("nil"));
-        assert_eq!(
-            ctx.ok_eval("(rest (quote (1 (1 2 3) 4 5)))"),
-            read("((1 2 3) 4 5)")
-        );
+        assert_ok!(ctx, "(rest nil)", "nil");
+        assert_ok!(ctx, "(rest (quote (1)))", "nil");
+        assert_ok!(ctx, "(rest (quote (1 (1 2 3) 4 5)))", "((1 2 3) 4 5)");
     }
 
     #[test]
     fn test_equal() {
         let ctx = ctx();
-        assert!(ctx
-            .err_eval("(equal)")
-            .downcast::<error::ArityError>()
-            .is_ok());
-        assert!(ctx
-            .err_eval("(equal 1)")
-            .downcast::<error::ArityError>()
-            .is_ok());
+        assert_err!(ctx, "(equal)", error::ArityError);
+        assert_err!(ctx, "(equal 1)", error::ArityError);
 
-        assert_eq!(ctx.ok_eval("(equal 1 1)"), read("t"));
-        assert_eq!(ctx.ok_eval("(equal 1 2)"), read("nil"));
-        assert_eq!(ctx.ok_eval("(equal 1 (quote foo))"), read("nil"));
-        assert_eq!(ctx.ok_eval("(equal (quote foo) (quote foo))"), read("t"));
-        assert_eq!(
-            ctx.ok_eval("(equal (quote (x y (z 1))) (quote (x y (z 1))))"),
-            read("t")
-        );
-        assert_eq!(
-            ctx.ok_eval("(equal (quote (x y (z 1))) (quote (x y (z 2))))"),
-            read("nil")
+        assert_ok!(ctx, "(equal 1 1)", "t");
+        assert_ok!(ctx, "(equal 1 2)", "nil");
+        assert_ok!(ctx, "(equal 1 (quote foo))", "nil");
+        assert_ok!(ctx, "(equal (quote foo) (quote foo))", "t");
+        assert_ok!(ctx, "(equal (quote (x y (z 1))) (quote (x y (z 1))))", "t");
+        assert_ok!(
+            ctx,
+            "(equal (quote (x y (z 1))) (quote (x y (z 2))))",
+            "nil"
         );
     }
 
@@ -374,34 +345,29 @@ mod tests {
     fn test_apply() {
         let ctx = ctx();
 
-        assert!(ctx
-            .err_eval("(apply)")
-            .downcast::<error::ArityError>()
-            .is_ok());
-        assert!(ctx
-            .err_eval("(set-fn x (lambda ())) (apply (symbol-function x))")
-            .downcast::<error::ArityError>()
-            .is_ok());
-        assert!(ctx
-            .err_eval("(set-fn x (lambda ())) (apply (symbol-function x) (quote (1 2)))")
-            .downcast::<error::ArityError>()
-            .is_ok());
+        assert_err!(ctx, "(apply)", error::ArityError);
+        assert_err!(
+            ctx,
+            "(set-fn x (lambda ())) (apply (symbol-function x))",
+            error::ArityError
+        );
+        assert_err!(
+            ctx,
+            "(set-fn x (lambda ())) (apply (symbol-function x) (quote (1 2)))",
+            error::ArityError
+        );
 
-        assert_eq!(
-            ctx.ok_eval("(apply (symbol-function +) (quote (1 2)))"),
-            read("3")
+        assert_ok!(ctx, "(apply (symbol-function +) (quote (1 2)))", "3");
+        assert_ok!(ctx, "(apply (symbol-function +) (quote (1 2 5)))", "8");
+        assert_ok!(
+            ctx,
+            "(apply (symbol-function cons) 1 (quote ((2))))",
+            "(1 2)"
         );
-        assert_eq!(
-            ctx.ok_eval("(apply (symbol-function +) (quote (1 2 5)))"),
-            read("8")
-        );
-        assert_eq!(
-            ctx.ok_eval("(apply (symbol-function cons) 1 (quote ((2))))"),
-            read("(1 2)")
-        );
-        assert_eq!(
-            ctx.ok_eval("(apply (symbol-function apply) (symbol-function +) 1 (quote ((2))))"),
-            read("3")
+        assert_ok!(
+            ctx,
+            "(apply (symbol-function apply) (symbol-function +) 1 (quote ((2))))",
+            "3"
         );
     }
 
@@ -409,123 +375,96 @@ mod tests {
     fn test_add() {
         let ctx = ctx();
 
-        assert_eq!(ctx.ok_eval("(+)"), read("0"));
-        assert_eq!(ctx.ok_eval("(+ 1)"), read("1"));
-        assert_eq!(ctx.ok_eval("(+ 1 2)"), read("3"));
-        assert_eq!(ctx.ok_eval("(+ 1 2 3 4 5)"), read("15"));
+        assert_ok!(ctx, "(+)", "0");
+        assert_ok!(ctx, "(+ 1)", "1");
+        assert_ok!(ctx, "(+ 1 2)", "3");
+        assert_ok!(ctx, "(+ 1 2 3 4 5)", "15");
     }
 
     #[test]
     fn test_sub() {
         let ctx = ctx();
 
-        assert!(ctx.err_eval("(-)").downcast::<error::ArityError>().is_ok());
+        assert_err!(ctx, "(-)", error::ArityError);
 
-        assert_eq!(ctx.ok_eval("(+ (- 1) 1)"), read("0"));
-        assert_eq!(ctx.ok_eval("(+ 1 (- 1 2))"), read("0"));
-        assert_eq!(ctx.ok_eval("(+ 13 (- 1 2 3 4 5))"), read("0"));
+        assert_ok!(ctx, "(+ (- 1) 1)", "0");
+        assert_ok!(ctx, "(+ 1 (- 1 2))", "0");
+        assert_ok!(ctx, "(+ 13 (- 1 2 3 4 5))", "0");
     }
 
     #[test]
     fn test_mul() {
         let ctx = ctx();
 
-        assert_eq!(ctx.ok_eval("(*)"), read("1"));
-        assert_eq!(ctx.ok_eval("(* 1)"), read("1"));
-        assert_eq!(ctx.ok_eval("(* 1 2)"), read("2"));
-        assert_eq!(ctx.ok_eval("(* 1 2 3 4 5)"), read("120"));
+        assert_ok!(ctx, "(*)", "1");
+        assert_ok!(ctx, "(* 1)", "1");
+        assert_ok!(ctx, "(* 1 2)", "2");
+        assert_ok!(ctx, "(* 1 2 3 4 5)", "120");
     }
 
     #[test]
     fn test_lt() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(<)").downcast::<error::ArityError>().is_ok());
-        assert!(ctx
-            .err_eval("(< 1)")
-            .downcast::<error::ArityError>()
-            .is_ok());
-        assert!(ctx
-            .err_eval("(< 1 (quote x))")
-            .downcast::<error::CastError>()
-            .is_ok());
+        assert_err!(ctx, "(<)", error::ArityError);
+        assert_err!(ctx, "(< 1)", error::ArityError);
+        assert_err!(ctx, "(< 1 (quote x))", error::CastError);
 
-        assert_eq!(ctx.ok_eval("(< 1 2)"), read("t"));
-        assert_eq!(ctx.ok_eval("(< 2 1)"), read("nil"));
+        assert_ok!(ctx, "(< 1 2)", "t");
+        assert_ok!(ctx, "(< 2 1)", "nil");
     }
 
     #[test]
     fn test_gt() {
         let ctx = ctx();
-        assert!(ctx.err_eval("(>)").downcast::<error::ArityError>().is_ok());
-        assert!(ctx
-            .err_eval("(> 1)")
-            .downcast::<error::ArityError>()
-            .is_ok());
-        assert!(ctx
-            .err_eval("(> 1 (quote x))")
-            .downcast::<error::CastError>()
-            .is_ok());
+        assert_err!(ctx, "(>)", error::ArityError);
+        assert_err!(ctx, "(> 1)", error::ArityError);
+        assert_err!(ctx, "(> 1 (quote x))", error::CastError);
 
-        assert_eq!(ctx.ok_eval("(> 1 2)"), read("nil"));
-        assert_eq!(ctx.ok_eval("(> 2 1)"), read("t"));
+        assert_ok!(ctx, "(> 1 2)", "nil");
+        assert_ok!(ctx, "(> 2 1)", "t");
     }
 
     #[test]
     fn test_listp() {
         let ctx = ctx();
-        assert!(ctx
-            .err_eval("(listp)")
-            .downcast::<error::ArityError>()
-            .is_ok());
+        assert_err!(ctx, "(listp)", error::ArityError);
 
-        assert_eq!(ctx.ok_eval("(listp (quote 1))"), read("nil"));
-        assert_eq!(ctx.ok_eval("(listp nil)"), read("t"));
-        assert_eq!(ctx.ok_eval("(listp (quote (1 2 3)))"), read("t"));
+        assert_ok!(ctx, "(listp (quote 1))", "nil");
+        assert_ok!(ctx, "(listp nil)", "t");
+        assert_ok!(ctx, "(listp (quote (1 2 3)))", "t");
     }
 
     #[test]
     fn test_emptyp() {
         let ctx = ctx();
-        assert!(ctx
-            .err_eval("(emptyp)")
-            .downcast::<error::ArityError>()
-            .is_ok());
+        assert_err!(ctx, "(emptyp)", error::ArityError);
 
-        assert_eq!(ctx.ok_eval("(emptyp nil)"), read("t"));
-        assert_eq!(ctx.ok_eval("(emptyp ())"), read("t"));
-        assert_eq!(ctx.ok_eval("(emptyp (quote (1 2 3)))"), read("nil"));
+        assert_ok!(ctx, "(emptyp nil)", "t");
+        assert_ok!(ctx, "(emptyp ())", "t");
+        assert_ok!(ctx, "(emptyp (quote (1 2 3)))", "nil");
     }
 
     #[test]
     fn test_symbolp() {
         let ctx = ctx();
-        assert!(ctx
-            .err_eval("(symbolp)")
-            .downcast::<error::ArityError>()
-            .is_ok());
+        assert_err!(ctx, "(symbolp)", error::ArityError);
 
-        assert_eq!(ctx.ok_eval("(symbolp (quote x))"), read("t"));
+        assert_ok!(ctx, "(symbolp (quote x))", "t");
 
-        assert_eq!(ctx.ok_eval("(symbolp 1)"), read("nil"));
+        assert_ok!(ctx, "(symbolp 1)", "nil");
 
         // TODO: is this ok?
-        assert_eq!(ctx.ok_eval("(symbolp nil)"), read("nil"));
-        assert_eq!(ctx.ok_eval("(symbolp t)"), read("nil"));
+        assert_ok!(ctx, "(symbolp nil)", "nil");
+        assert_ok!(ctx, "(symbolp t)", "nil");
     }
 
     #[test]
     fn test_macroexpand_1() {
         let ctx = ctx();
-        assert!(ctx
-            .err_eval("(macroexpand-1)")
-            .downcast::<error::ArityError>()
-            .is_ok());
+        assert_err!(ctx, "(macroexpand-1)", error::ArityError);
 
-        assert_eq!(ctx.ok_eval("(set-macro-fn x (lambda (arg) (if arg (quote x) (quote y)))) (macroexpand-1 (quote (x t)))"), read("x"));
-        assert_eq!(ctx.ok_eval("(set-macro-fn x (lambda (arg) (if arg (quote x) (quote y)))) (macroexpand-1 (quote (x nil)))"), read("y"));
-        assert_eq!(
-            ctx.ok_eval("(macroexpand-1 (quote (cons 1 nil)))"),
-            read("(cons 1 nil)")
-        );
+        assert_ok!(ctx, "(set-macro-fn x (lambda (arg) (if arg (quote x) (quote y)))) (macroexpand-1 (quote (x t)))", "x");
+        assert_ok!(ctx, "(set-macro-fn x (lambda (arg) (if arg (quote x) (quote y)))) (macroexpand-1 (quote (x nil)))", "y");
+        assert_ok!(ctx, "(macroexpand-1 (quote (cons 1 nil)))", "(cons 1 nil)");
     }
 }
