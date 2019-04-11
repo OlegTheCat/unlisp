@@ -182,6 +182,22 @@ impl<T: fmt::Debug> fmt::Debug for List<T> {
     }
 }
 
+impl<T: fmt::Display> fmt::Display for List<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut first = true;
+        write!(f, "(")?;
+        for elem in self.iter() {
+            if first {
+                write!(f, "{}", elem)?;
+                first = false;
+            } else {
+                write!(f, " {}", elem)?;
+            }
+        }
+        write!(f, ")")
+    }
+}
+
 impl<T: Hash> Hash for List<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for elem in self.iter() {

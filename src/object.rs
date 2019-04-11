@@ -42,10 +42,25 @@ pub enum FunctionBody {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Function {
+pub struct FunctionSignature {
     pub name: Option<Symbol>,
     pub arglist: List<Symbol>,
     pub restarg: Option<Symbol>,
+}
+
+impl FunctionSignature {
+    fn new(name: Option<Symbol>, arglist: List<Symbol>, restarg: Option<Symbol>) -> Self {
+        Self {
+            name: name,
+            arglist: arglist,
+            restarg: restarg,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Function {
+    pub sig: FunctionSignature,
     pub body: FunctionBody,
 }
 
@@ -57,9 +72,7 @@ impl Function {
         body: List<LispObject>,
     ) -> Self {
         Self {
-            name: name,
-            arglist: arglist,
-            restarg: restarg,
+            sig: FunctionSignature::new(name, arglist, restarg),
             body: FunctionBody::Interpreted(body),
         }
     }
@@ -71,9 +84,7 @@ impl Function {
         body: NativeFnWrapper,
     ) -> Self {
         Self {
-            name: name,
-            arglist: arglist,
-            restarg: restarg,
+            sig: FunctionSignature::new(name, arglist, restarg),
             body: FunctionBody::Native(body),
         }
     }

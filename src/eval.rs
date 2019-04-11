@@ -21,74 +21,61 @@ pub fn call_function_object(
         args
     };
 
-    let has_restarg = function.restarg.is_some();
+    let has_restarg = function.sig.restarg.is_some();
 
-    if (args.len() < function.arglist.len())
-        || (!has_restarg && function.arglist.len() != args.len())
+    if (args.len() < function.sig.arglist.len())
+        || (!has_restarg && function.sig.arglist.len() != args.len())
     {
-        let render_signature = || {
-            let mut arglist = function
-                .arglist
-                .iter()
-                .map(|s| LispObject::Symbol(s.clone()))
-                .collect::<Vec<_>>();
-
-            let name_padded = function
-                .name
-                .as_ref()
-                .map_or("".to_string(), |s| format!("{} ", s.name()));
-
-            let body = match function.body {
-                object::FunctionBody::Native(_) => "<native code>",
-                object::FunctionBody::Interpreted(_) => "...",
-            };
-
-            if let Some(ref restarg) = function.restarg {
-                arglist.push(LispObject::Symbol(Symbol::new("&")));
-                arglist.push(LispObject::Symbol(restarg.clone()));
-            }
-
-            let arglist = LispObject::List(List::from_rev_iter(arglist));
-            format!("(lambda {}{} {})", name_padded, arglist, body)
-        };
-
-        let expected = function.arglist.len();
+        let expected = function.sig.arglist.len();
         let actual = args.len();
 
         Err(error::ArityError::new(
             expected,
             actual,
             has_restarg,
-            name_hint.map(Symbol::name).unwrap_or_else(render_signature),
+            name_hint.map_or_else(|| format!("{}", function.sig), Symbol::name),
         ))?
     }
 
     match name_hint {
         Some(name) => env.push_stack_frame_name(name.clone()),
-        None => env.push_stack_frame_sig(function.name.clone(), function.arglist.clone()),
+        None => env.push_stack_frame_sig(function.sig.clone()),
     }
 
+    let stack_trace = env.get_stack_trace();
+    let attach_stack_trace = |res: LispObjectResult| {
+        res.map_err(|e| {
+            if e.downcast_ref::<error::ErrorWithStackTrace>().is_some() {
+                e
+            } else {
+                Box::new(error::ErrorWithStackTrace::new(e, stack_trace.clone()))
+            }
+        })
+    };
+
     match function.body {
-        object::FunctionBody::Native(ref native_body) => native_body.0(env, args),
+        object::FunctionBody::Native(ref native_body) => {
+            attach_stack_trace(native_body.0(env, args))
+        }
         object::FunctionBody::Interpreted(ref interpreted_body) => {
             let mut args = args.iter();
 
             let mut new_env = env.clone();
-            for (sym, val) in function.arglist.iter().zip(args.by_ref()) {
+            for (sym, val) in function.sig.arglist.iter().zip(args.by_ref()) {
                 new_env.set_local_value(sym.clone(), val.clone());
             }
 
             if has_restarg {
                 let restarg = args.map(|lo| lo.clone()).collect();
                 new_env.set_local_value(
-                    function.restarg.as_ref().unwrap().clone(),
+                    function.sig.restarg.clone().unwrap(),
                     LispObject::List(restarg),
                 );
             }
 
             let mut result = LispObject::nil();
             for form in interpreted_body.iter() {
-                result = eval(new_env.clone(), form)?;
+                result = attach_stack_trace(eval(new_env.clone(), form))?;
             }
 
             Ok(result)

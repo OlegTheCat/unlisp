@@ -1,8 +1,49 @@
-use std;
+use crate::env::StackTrace;
+use std::error::Error;
 use std::fmt;
 
-pub type GenError = Box<std::error::Error>;
+pub type GenError = Box<Error>;
 pub type GenResult<T> = Result<T, GenError>;
+
+#[derive(Debug)]
+pub struct ErrorWithStackTrace {
+    err: GenError,
+    stack_trace: StackTrace,
+}
+
+impl ErrorWithStackTrace {
+    pub fn new(err: GenError, trace: StackTrace) -> Self {
+        Self {
+            err: err,
+            stack_trace: trace,
+        }
+    }
+}
+
+impl fmt::Display for ErrorWithStackTrace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", &self.err)
+    }
+}
+
+impl Error for ErrorWithStackTrace {}
+
+pub fn downcast_error<T: Error + 'static>(err: &GenError) -> Option<(&T, Option<&StackTrace>)> {
+    err.downcast_ref::<ErrorWithStackTrace>().map_or_else(
+        || err.downcast_ref::<T>().map(|res| (res, None)),
+        |st_err| {
+            st_err
+                .err
+                .downcast_ref::<T>()
+                .map(|res| (res, Some(&st_err.stack_trace)))
+        },
+    )
+}
+
+pub fn retrieve_stack_trace(err: &GenError) -> Option<&StackTrace> {
+    err.downcast_ref::<ErrorWithStackTrace>()
+        .map(|e| &e.stack_trace)
+}
 
 #[derive(Debug, Clone)]
 pub struct CastError {
@@ -24,7 +65,7 @@ impl fmt::Display for CastError {
     }
 }
 
-impl std::error::Error for CastError {}
+impl Error for CastError {}
 
 #[derive(Debug, Clone)]
 pub struct ArityError {
@@ -60,7 +101,7 @@ impl fmt::Display for ArityError {
     }
 }
 
-impl std::error::Error for ArityError {}
+impl Error for ArityError {}
 
 #[derive(Debug, Clone)]
 pub struct SyntaxError {
@@ -81,7 +122,7 @@ impl fmt::Display for SyntaxError {
     }
 }
 
-impl std::error::Error for SyntaxError {}
+impl Error for SyntaxError {}
 
 #[derive(Debug, Clone)]
 pub struct UndefinedSymbol {
@@ -109,7 +150,7 @@ impl fmt::Display for UndefinedSymbol {
     }
 }
 
-impl std::error::Error for UndefinedSymbol {}
+impl Error for UndefinedSymbol {}
 
 #[derive(Debug, Clone)]
 pub struct GenericError {
@@ -130,4 +171,4 @@ impl fmt::Display for GenericError {
     }
 }
 
-impl std::error::Error for GenericError {}
+impl Error for GenericError {}

@@ -1,22 +1,8 @@
-use crate::cons::List;
+use crate::env::StackFrameDesignator;
+use crate::env::StackTrace;
 use crate::object;
 use crate::object::LispObject;
 use std::fmt;
-
-fn write_list(f: &mut fmt::Formatter, list: &List<LispObject>) -> Result<(), fmt::Error> {
-    let mut first = true;
-
-    write!(f, "(")?;
-
-    for form in list.iter() {
-        if !first {
-            write!(f, " ")?;
-        }
-        write!(f, "{}", form)?;
-        first = false;
-    }
-    write!(f, ")")
-}
 
 impl fmt::Display for object::Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -42,7 +28,37 @@ impl fmt::Display for object::LispObject {
             LispObject::String(s) => write!(f, "\"{}\"", s),
             LispObject::Fn(func) => write!(f, "{}", func),
             LispObject::Symbol(s) => write!(f, "{}", s),
-            LispObject::List(list) => write_list(f, list),
+            LispObject::List(list) => write!(f, "{}", list),
         }
+    }
+}
+
+impl fmt::Display for object::FunctionSignature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "lambda/{}/{}{}",
+            self.name
+                .as_ref()
+                .map_or_else(|| "<anon>".to_string(), |s| s.name()),
+            self.arglist.len(),
+            self.restarg.as_ref().map_or("", |_| "+")
+        )
+    }
+}
+
+pub fn print_stack_trace(trace: Option<&StackTrace>) {
+    println!("stack trace:");
+    match trace {
+        Some(trace) => {
+            for designator in trace.iter() {
+                match designator {
+                    StackFrameDesignator::Top => println!("  <top>"),
+                    StackFrameDesignator::Name(sym) => println!("  {}", sym),
+                    StackFrameDesignator::Signature(sig) => println!("  {}", sig),
+                }
+            }
+        }
+        None => println!("  unavailable"),
     }
 }

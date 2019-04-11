@@ -81,6 +81,6 @@ macro_rules! assert_ok {
 
 macro_rules! assert_err {
     ($ctx:ident, $actual:expr, $downcast_to:ty) => {
-        assert!($ctx.err_eval($actual).downcast::<$downcast_to>().is_ok());
+        assert!(error::downcast_error::<$downcast_to>(&$ctx.err_eval($actual)).is_some());
     };
 }

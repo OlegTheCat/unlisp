@@ -4,6 +4,7 @@ use crate::eval;
 use crate::macroexpand;
 use crate::native;
 use crate::object;
+use crate::print;
 use crate::reader;
 use crate::special;
 
@@ -22,11 +23,16 @@ pub fn eval_stdlib(env: &env::Env) {
     loop {
         match reader.read_form() {
             Ok(form) => {
-                macroexpand_and_eval(env.clone(), &form).expect("error during stdlib eval");
+                let res = macroexpand_and_eval(env.clone(), &form);
+                res.map_err(|e| {
+                    println!("error during stdlib eval: {}", e);
+                    print::print_stack_trace(error::retrieve_stack_trace(&e));
+                })
+                .unwrap();
             }
             ref err @ Err(_) if is_gen_eof(err) => break,
 
-            Err(ref e) => panic!("Unexpected error during stdlib eval: {}", e),
+            Err(ref e) => panic!("Reader error during stdlib eval: {}", e),
         }
     }
 }
@@ -39,8 +45,8 @@ pub fn init_env(env: &mut env::Env) {
 
 pub fn is_gen_eof<T>(result: &error::GenResult<T>) -> bool {
     match result {
-        Err(e) => match e.downcast_ref::<io::Error>() {
-            Some(io_err) => io_err.kind() == io::ErrorKind::UnexpectedEof,
+        Err(e) => match error::downcast_error::<io::Error>(e) {
+            Some((io_err, _)) => io_err.kind() == io::ErrorKind::UnexpectedEof,
             None => false,
         },
         _ => false,

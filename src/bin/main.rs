@@ -7,6 +7,8 @@ use std::thread;
 
 use unlisp::common::*;
 use unlisp::env;
+use unlisp::error::retrieve_stack_trace;
+use unlisp::print::print_stack_trace;
 use unlisp::reader;
 
 fn repl() {
@@ -29,7 +31,10 @@ fn repl() {
                 Ok(lo) => {
                     println!("{}", lo);
                 }
-                Err(e) => println!("error: {}", e),
+                Err(e) => {
+                    println!("error: {}", e);
+                    print_stack_trace(retrieve_stack_trace(&e));
+                }
             },
             ref err @ Err(_) if is_gen_eof(err) => break,
             Err(ref e) => println!("reader error: {}", e),

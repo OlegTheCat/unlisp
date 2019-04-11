@@ -7,18 +7,20 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
-enum StackFrameDesignator {
-    Signature((Option<Symbol>, List<Symbol>)),
+pub enum StackFrameDesignator {
+    Signature(FunctionSignature),
     Name(Symbol),
     Top,
 }
+
+pub type StackTrace = List<StackFrameDesignator>;
 
 #[derive(Debug, Clone)]
 struct LocalEnv {
     sym_env: HashMap<Symbol, LispObject>,
     fn_env: HashMap<Symbol, Function>,
     macro_env: HashMap<Symbol, Function>,
-    stack: List<StackFrameDesignator>,
+    stack_trace: StackTrace,
 }
 
 impl LocalEnv {
@@ -27,7 +29,7 @@ impl LocalEnv {
             sym_env: HashMap::new(),
             fn_env: HashMap::new(),
             macro_env: HashMap::new(),
-            stack: List::empty().cons(StackFrameDesignator::Top),
+            stack_trace: List::empty().cons(StackFrameDesignator::Top),
         }
     }
 }
@@ -64,7 +66,7 @@ macro_rules! lookup_symbol {
             .$lookup_env
             .get($sym)
             .or_else(|| global.$lookup_env.get($sym))
-            .map(|v| v.clone())
+            .cloned()
     }};
 }
 
@@ -92,7 +94,7 @@ impl Env {
     }
 
     pub fn lookup_symbol_special(&self, s: &Symbol) -> Option<NativeFnWrapper> {
-        self.global_env().special_env.get(s).map(|f| f.clone())
+        self.global_env().special_env.get(s).cloned()
     }
 
     pub fn lookup_symbol_value(&self, s: &Symbol) -> Option<LispObject> {
@@ -124,13 +126,16 @@ impl Env {
     }
 
     pub fn push_stack_frame_name(&mut self, name: Symbol) {
-        let cur_stack = &self.local_env.stack;
-        self.local_env.stack = cur_stack.cons(StackFrameDesignator::Name(name));
+        let cur_stack_trace = &self.local_env.stack_trace;
+        self.local_env.stack_trace = cur_stack_trace.cons(StackFrameDesignator::Name(name));
     }
 
-    pub fn push_stack_frame_sig(&mut self, lambda_name: Option<Symbol>, arglist: List<Symbol>) {
-        let cur_stack = &self.local_env.stack;
-        self.local_env.stack =
-            cur_stack.cons(StackFrameDesignator::Signature((lambda_name, arglist)));
+    pub fn push_stack_frame_sig(&mut self, sig: FunctionSignature) {
+        let cur_stack_trace = &self.local_env.stack_trace;
+        self.local_env.stack_trace = cur_stack_trace.cons(StackFrameDesignator::Signature(sig));
+    }
+
+    pub fn get_stack_trace(&self) -> StackTrace {
+        self.local_env.stack_trace.clone()
     }
 }
