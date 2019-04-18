@@ -6,7 +6,7 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::rc::Rc;
 
-pub type LispObjectResult = error::GenResult<LispObject>;
+type EvalResult = Result<LispObject, error::ErrorWithStackTrace>;
 
 macro_rules! define_unwrapper {
     ($id:ident ($enum:ident :: $from:ident) -> $to:ty) => {
@@ -33,7 +33,7 @@ macro_rules! define_unwrapper_owned {
 }
 
 #[derive(Clone)]
-pub struct NativeFnWrapper(pub fn(Env, List<LispObject>) -> LispObjectResult);
+pub struct NativeFnWrapper(pub fn(Env, List<LispObject>) -> EvalResult);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum FunctionBody {

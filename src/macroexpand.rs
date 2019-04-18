@@ -2,12 +2,12 @@ use crate::cons::List;
 use crate::env::Env;
 use crate::error;
 use crate::eval;
+use crate::eval::EvalResult;
 use crate::object::LispObject;
-use crate::object::LispObjectResult;
 use crate::object::Symbol;
 use crate::special;
 
-fn macroexpand_list(env: &Env, list: &List<LispObject>) -> error::GenResult<List<LispObject>> {
+fn macroexpand_list(env: &Env, list: &List<LispObject>) -> Result<List<LispObject>, error::ErrorWithStackTrace> {
     let expanded = list
         .iter()
         .map(|lo| macroexpand_all(env.clone(), lo))
@@ -16,11 +16,11 @@ fn macroexpand_list(env: &Env, list: &List<LispObject>) -> error::GenResult<List
     Ok(List::from_rev_iter(expanded))
 }
 
-fn macroexpand_into_list(env: &Env, list: &List<LispObject>) -> LispObjectResult {
+fn macroexpand_into_list(env: &Env, list: &List<LispObject>) -> EvalResult {
     Ok(LispObject::List(macroexpand_list(env, list)?))
 }
 
-pub fn macroexpand_all(env: Env, form: &LispObject) -> LispObjectResult {
+pub fn macroexpand_all(env: Env, form: &LispObject) -> EvalResult {
     match form {
         self_expand @ LispObject::T
         | self_expand @ LispObject::Integer(_)
@@ -33,12 +33,12 @@ pub fn macroexpand_all(env: Env, form: &LispObject) -> LispObjectResult {
         LispObject::List(list) => {
             match list.ufirst() {
                 LispObject::Symbol(s) if *s == Symbol::new("quote") => {
-                    special::parse_quote(&list.tail())?;
+                    env.attach_st_box(special::parse_quote(&list.tail()))?;
                     Ok(LispObject::List(list.clone()))
                 }
                 LispObject::Symbol(s) if *s == Symbol::new("lambda") => {
                     let special::ParsedLambda { name, body, .. } =
-                        special::parse_lambda(&list.tail())?;
+                        env.attach_st_box(special::parse_lambda(&list.tail()))?;
 
                     let expanded_body = macroexpand_list(&env, &body)?;
 
@@ -63,7 +63,7 @@ pub fn macroexpand_all(env: Env, form: &LispObject) -> LispObjectResult {
                 }
                 LispObject::Symbol(s) if *s == Symbol::new("let") => {
                     let let_forms = list.tail();
-                    let special::ParsedLet { bindings, body } = special::parse_let(&let_forms)?;
+                    let special::ParsedLet { bindings, body } = env.attach_st_box(special::parse_let(&let_forms))?;
                     let expanded_body = macroexpand_list(&env, &body)?;
 
                     let mut expanded_bindings = List::empty();

@@ -2,13 +2,26 @@ use crate::cons::List;
 use crate::env;
 use crate::error;
 use crate::eval;
+use crate::eval::EvalResult;
 use crate::object;
 use crate::object::LispObject;
-use crate::object::LispObjectResult;
 use crate::object::Symbol;
 use std::io::Write;
+use std::error::Error;
+use std::fmt;
 
-fn identity_converter(v: &LispObject) -> error::GenResult<&LispObject> {
+#[derive(Debug)]
+struct DummyError;
+
+impl Error for DummyError {}
+
+impl fmt::Display for DummyError {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        panic!("tried to display DummyError");
+    }
+}
+
+fn identity_converter(v: &LispObject) -> Result<&LispObject, DummyError> {
     Ok(&v)
 }
 
@@ -19,10 +32,10 @@ fn identity(v: LispObject) -> LispObject {
 macro_rules! define_native_fn {
     ($maker:ident, $id:ident ($env:ident, $( $arg:ident : $converter:path ),*) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: env::Env, args: List<LispObject> ) -> LispObjectResult {
+        fn $id( $env: env::Env, args: List<LispObject> ) -> EvalResult {
             let mut args = args.iter();
 
-            $( let $arg = $converter(args.next().unwrap())?; )*
+            $( let $arg = $env.attach_st($converter(args.next().unwrap()))?; )*
 
             let res = $result_wrap($body);
             Ok(res)
@@ -38,13 +51,13 @@ macro_rules! define_native_fn {
 
     ($maker:ident, $id:ident ($env:ident, $( $arg:ident : $converter:path, )* ... $vararg:ident : $vconverter:path ) -> $result_wrap:path $body:block) => {
         #[allow(unused_mut)]
-        fn $id( $env: env::Env, args: List<LispObject> ) -> LispObjectResult {
+        fn $id( $env: env::Env, args: List<LispObject> ) -> EvalResult {
             let mut args = args.iter();
 
-            $(  let $arg = $converter(args.next().unwrap())?; )*
+            $(  let $arg = $env.attach_st($converter(args.next().unwrap()))?; )*
 
             let $vararg = args
-                .map(|lo| $vconverter(lo))
+                .map(|lo| $env.attach_st($vconverter(lo)))
                 .collect::<Result<List<_>, _>>()?;
 
             let res = $result_wrap($body);
@@ -78,8 +91,8 @@ fn native_bool_to_lisp_bool(b: bool) -> LispObject {
 
 define_native_fn! {
     make_stdout_write,
-    native_stdout_write(_env, s: object::to_string) -> identity {
-        write!(std::io::stdout(), "{}", s)?;
+    native_stdout_write(env, s: object::to_string) -> identity {
+        env.attach_st(write!(std::io::stdout(), "{}", s))?;
         LispObject::nil()
     }
 }
@@ -100,12 +113,8 @@ define_native_fn! {
     }
 }
 
-fn native_apply(env: env::Env, args: List<LispObject>) -> LispObjectResult {
-    if args.len() <= 1 {
-        Err(error::ArityError::new(2, 1, true, "apply"))?
-    }
-
-    let f = object::to_function(args.first().unwrap())?;
+fn native_apply(env: env::Env, args: List<LispObject>) -> EvalResult {
+    let f = env.attach_st(object::to_function(args.first().unwrap()))?;
 
     let args = args.tail();
     let mut args_iter = args.rc_iter();
@@ -113,7 +122,7 @@ fn native_apply(env: env::Env, args: List<LispObject>) -> LispObjectResult {
     let unspliced = args_iter.by_ref().take(args.len() - 1).collect::<Vec<_>>();
 
     let last_arg = args_iter.next().unwrap();
-    let last_arg = object::to_list(last_arg.as_ref())?;
+    let last_arg = env.attach_st(object::to_list(last_arg.as_ref()))?;
     let mut args = last_arg.clone();
 
     for x in unspliced.into_iter().rev() {
@@ -126,7 +135,9 @@ fn native_apply(env: env::Env, args: List<LispObject>) -> LispObjectResult {
 fn make_apply(name: impl Into<String>) -> object::Function {
     object::Function::new_native(
         Some(Symbol::new(name)),
-        List::empty().cons(Symbol::new("fn")),
+        List::empty()
+            .cons(Symbol::new("fn"))
+            .cons(Symbol::new("arg")),
         Some(Symbol::new("args")),
         object::NativeFnWrapper(native_apply),
     )
@@ -194,10 +205,10 @@ define_native_fn! {
 
 define_native_fn! {
     make_first,
-    native_first(_env, list: object::to_list) -> identity {
+    native_first(env, list: object::to_list) -> identity {
         let first = list.first()
-            .ok_or_else(|| error::GenericError::new(
-                "cannot do first on empty list"))?;
+            .ok_or_else(|| env.st_err(error::GenericError::new(
+                "cannot do first on empty list")))?;
         first.clone()
     }
 }

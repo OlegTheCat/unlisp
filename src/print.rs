@@ -47,18 +47,13 @@ impl fmt::Display for object::FunctionSignature {
     }
 }
 
-pub fn print_stack_trace(trace: Option<&StackTrace>) {
+pub fn print_stack_trace(trace: &StackTrace) {
     println!("stack trace:");
-    match trace {
-        Some(trace) => {
-            for designator in trace.iter() {
-                match designator {
-                    StackFrameDesignator::Top => println!("  <top>"),
-                    StackFrameDesignator::Name(sym) => println!("  {}", sym),
-                    StackFrameDesignator::Signature(sig) => println!("  {}", sig),
-                }
-            }
+    for designator in trace.iter() {
+        match designator {
+            StackFrameDesignator::Top => println!("  <top>"),
+            StackFrameDesignator::Name(sym) => println!("  {}", sym),
+            StackFrameDesignator::Signature(sig) => println!("  {}", sig),
         }
-        None => println!("  unavailable"),
     }
 }

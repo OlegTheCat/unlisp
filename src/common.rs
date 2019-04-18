@@ -1,5 +1,4 @@
 use crate::env;
-use crate::error;
 use crate::eval;
 use crate::macroexpand;
 use crate::native;
@@ -10,8 +9,9 @@ use crate::special;
 
 use std::fs;
 use std::io;
+use std::error::Error;
 
-pub fn macroexpand_and_eval(env: env::Env, form: &object::LispObject) -> object::LispObjectResult {
+pub fn macroexpand_and_eval(env: env::Env, form: &object::LispObject) -> eval::EvalResult {
     let expanded = macroexpand::macroexpand_all(env.clone(), form)?;
     eval::eval(env, &expanded)
 }
@@ -25,8 +25,8 @@ pub fn eval_stdlib(env: &env::Env) {
             Ok(form) => {
                 let res = macroexpand_and_eval(env.clone(), &form);
                 res.map_err(|e| {
-                    println!("error during stdlib eval: {}", e);
-                    print::print_stack_trace(error::retrieve_stack_trace(&e));
+                    println!("error during stdlib eval: {}", e.err);
+                    print::print_stack_trace(&e.stack_trace);
                 })
                 .unwrap();
             }
@@ -43,10 +43,10 @@ pub fn init_env(env: &mut env::Env) {
     eval_stdlib(env);
 }
 
-pub fn is_gen_eof<T>(result: &error::GenResult<T>) -> bool {
+pub fn is_gen_eof<T>(result: &Result<T, Box<Error>>) -> bool {
     match result {
-        Err(e) => match error::downcast_error::<io::Error>(e) {
-            Some((io_err, _)) => io_err.kind() == io::ErrorKind::UnexpectedEof,
+        Err(e) => match e.downcast_ref::<io::Error>() {
+            Some(io_err) => io_err.kind() == io::ErrorKind::UnexpectedEof,
             None => false,
         },
         _ => false,

@@ -3,8 +3,9 @@ use crate::env::Env;
 use crate::error;
 use crate::object;
 use crate::object::LispObject;
-use crate::object::LispObjectResult;
 use crate::object::Symbol;
+
+pub type EvalResult = Result<LispObject, error::ErrorWithStackTrace>;
 
 pub fn call_function_object(
     mut env: Env,
@@ -12,7 +13,7 @@ pub fn call_function_object(
     args: List<LispObject>,
     eval_args: bool,
     name_hint: Option<&Symbol>,
-) -> LispObjectResult {
+) -> EvalResult {
     let args = if eval_args {
         args.iter()
             .map(|lo| eval(env.clone(), lo))
@@ -29,12 +30,12 @@ pub fn call_function_object(
         let expected = function.sig.arglist.len();
         let actual = args.len();
 
-        Err(error::ArityError::new(
+        Err(env.st_err(error::ArityError::new(
             expected,
             actual,
             has_restarg,
             name_hint.map_or_else(|| format!("{}", function.sig), Symbol::name),
-        ))?
+        )))?
     }
 
     match name_hint {
@@ -42,20 +43,9 @@ pub fn call_function_object(
         None => env.push_stack_frame_sig(function.sig.clone()),
     }
 
-    let stack_trace = env.get_stack_trace();
-    let attach_stack_trace = |res: LispObjectResult| {
-        res.map_err(|e| {
-            if e.downcast_ref::<error::ErrorWithStackTrace>().is_some() {
-                e
-            } else {
-                Box::new(error::ErrorWithStackTrace::new(e, stack_trace.clone()))
-            }
-        })
-    };
-
     match function.body {
         object::FunctionBody::Native(ref native_body) => {
-            attach_stack_trace(native_body.0(env, args))
+            native_body.0(env, args)
         }
         object::FunctionBody::Interpreted(ref interpreted_body) => {
             let mut args = args.iter();
@@ -75,7 +65,7 @@ pub fn call_function_object(
 
             let mut result = LispObject::nil();
             for form in interpreted_body.iter() {
-                result = attach_stack_trace(eval(new_env.clone(), form))?;
+                result = eval(new_env.clone(), form)?;
             }
 
             Ok(result)
@@ -83,9 +73,9 @@ pub fn call_function_object(
     }
 }
 
-fn call_symbol(env: Env, form: &LispObject) -> LispObjectResult {
-    let form = object::to_list(form)?;
-    let sym = object::to_symbol(form.first().unwrap())?;
+fn call_symbol(env: Env, form: &LispObject) -> EvalResult {
+    let form = env.attach_st(object::to_list(form))?;
+    let sym = env.attach_st(object::to_symbol(form.first().unwrap()))?;
     let args = form.tail();
 
     let spec = env.lookup_symbol_special(sym);
@@ -95,11 +85,11 @@ fn call_symbol(env: Env, form: &LispObject) -> LispObjectResult {
     } else if let Some(ref f) = env.lookup_symbol_function(sym) {
         call_function_object(env, f, args, true, Some(sym))
     } else {
-        Err(error::UndefinedSymbol::new(sym.name(), true))?
+        Err(env.st_err(error::UndefinedSymbol::new(sym.name(), true)))?
     }
 }
 
-pub fn eval(env: Env, form: &LispObject) -> LispObjectResult {
+pub fn eval(env: Env, form: &LispObject) -> EvalResult {
     match form {
         self_eval @ LispObject::T => Ok(self_eval.clone()),
         self_eval @ LispObject::Integer(_) => Ok(self_eval.clone()),
@@ -110,12 +100,12 @@ pub fn eval(env: Env, form: &LispObject) -> LispObjectResult {
         LispObject::Symbol(s) => {
             let val = env
                 .lookup_symbol_value(&s)
-                .ok_or_else(|| error::UndefinedSymbol::new(s.name(), false))?;
+                .ok_or_else(|| env.st_err(error::UndefinedSymbol::new(s.name(), false)))?;
             Ok(val)
         }
         LispObject::List(ref list) => match list.ufirst() {
             LispObject::Symbol(_) => call_symbol(env, form),
-            _ => Err(error::SyntaxError::new("illegal function call"))?,
+            _ => Err(env.st_err(error::SyntaxError::new("illegal function call")))?,
         },
     }
 }

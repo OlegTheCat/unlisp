@@ -1,11 +1,13 @@
 use crate::cons::List;
 use crate::env::Env;
 use crate::error::*;
-use crate::eval::eval;
+use crate::eval::{eval, EvalResult};
 use crate::object;
 use crate::object::LispObject;
-use crate::object::LispObjectResult;
 use crate::object::Symbol;
+use std::error::Error;
+
+type GenResult<T> = Result<T, Box<Error>>;
 
 pub struct ParsedQuote(pub LispObject);
 
@@ -17,8 +19,8 @@ pub fn parse_quote(args: &List<LispObject>) -> GenResult<ParsedQuote> {
     Ok(ParsedQuote(args.ufirst().clone()))
 }
 
-fn quote_form(_env: Env, args: List<LispObject>) -> LispObjectResult {
-    Ok(parse_quote(&args)?.0)
+fn quote_form(env: Env, args: List<LispObject>) -> EvalResult {
+    Ok(env.attach_st_box(parse_quote(&args))?.0)
 }
 
 pub struct ParsedLet<'a> {
@@ -58,8 +60,8 @@ pub fn parse_let<'a>(args: &'a List<LispObject>) -> GenResult<ParsedLet<'a>> {
     })
 }
 
-fn let_form(env: Env, args: List<LispObject>) -> LispObjectResult {
-    let ParsedLet { bindings, body } = parse_let(&args)?;
+fn let_form(env: Env, args: List<LispObject>) -> EvalResult {
+    let ParsedLet { bindings, body } = env.attach_st_box(parse_let(&args))?;
 
     let mut new_env = env;
 
@@ -144,13 +146,13 @@ pub fn parse_lambda(args: &List<LispObject>) -> GenResult<ParsedLambda> {
     })
 }
 
-fn lambda_form(_env: Env, args: List<LispObject>) -> LispObjectResult {
+fn lambda_form(env: Env, args: List<LispObject>) -> EvalResult {
     let ParsedLambda {
         name,
         simple_args,
         restarg,
         body,
-    } = parse_lambda(&args)?;
+    } = env.attach_st_box(parse_lambda(&args))?;
 
     Ok(LispObject::Fn(object::Function::new_interpreted(
         name,
@@ -160,47 +162,47 @@ fn lambda_form(_env: Env, args: List<LispObject>) -> LispObjectResult {
     )))
 }
 
-fn set_fn(mut env: Env, args: List<LispObject>) -> LispObjectResult {
+fn set_fn(mut env: Env, args: List<LispObject>) -> EvalResult {
     let mut args = args.iter();
     let sym = args
         .next()
-        .ok_or_else(|| SyntaxError::new("no symbol in set-fn"))?;
-    let sym = object::to_symbol(sym).map_err(|_e| SyntaxError::new("not a symbol in set-fn"))?;
+        .ok_or_else(|| env.st_err(SyntaxError::new("no symbol in set-fn")))?;
+    let sym = object::to_symbol(sym).map_err(|_| env.st_err(SyntaxError::new("not a symbol in set-fn")))?;
 
     let func = args
         .next()
-        .ok_or_else(|| SyntaxError::new("no function in set-fn"))?;
-    let func = object::to_function_owned(eval(env.clone(), &func)?)?;
+        .ok_or_else(|| env.st_err(SyntaxError::new("no function in set-fn")))?;
+    let func = env.attach_st(object::to_function_owned(eval(env.clone(), &func)?))?;
 
     env.set_global_function(sym.clone(), func);
     Ok(LispObject::nil())
 }
 
-fn set_macro_fn(mut env: Env, args: List<LispObject>) -> LispObjectResult {
+fn set_macro_fn(mut env: Env, args: List<LispObject>) -> EvalResult {
     let mut args = args.iter();
     let sym = args
         .next()
-        .ok_or_else(|| SyntaxError::new("no symbol in set-macro-fn"))?;
+        .ok_or_else(|| env.st_err(SyntaxError::new("no symbol in set-macro-fn")))?;
     let sym =
-        object::to_symbol(sym).map_err(|_e| SyntaxError::new("not a symbol in set-macro-fn"))?;
+        object::to_symbol(sym).map_err(|_| env.st_err(SyntaxError::new("not a symbol in set-macro-fn")))?;
 
     let func = args
         .next()
-        .ok_or_else(|| SyntaxError::new("no function in set-macro-fn"))?;
-    let func = object::to_function_owned(eval(env.clone(), &func)?)?;
+        .ok_or_else(|| env.st_err(SyntaxError::new("no function in set-macro-fn")))?;
+    let func = env.attach_st(object::to_function_owned(eval(env.clone(), &func)?))?;
 
     env.set_global_macro(sym.clone(), func);
     Ok(LispObject::nil())
 }
 
-fn if_form(env: Env, args: List<LispObject>) -> LispObjectResult {
+fn if_form(env: Env, args: List<LispObject>) -> EvalResult {
     let mut args = args.iter();
     let cond = args
         .next()
-        .ok_or_else(|| SyntaxError::new("no condition in if"))?;
+        .ok_or_else(|| env.st_err(SyntaxError::new("no condition in if")))?;
     let then_form = args
         .next()
-        .ok_or_else(|| SyntaxError::new("no then in if"))?;
+        .ok_or_else(|| env.st_err(SyntaxError::new("no then in if")))?;
     let nil = LispObject::nil();
     let else_form = args.next().unwrap_or(&nil);
 
@@ -212,24 +214,24 @@ fn if_form(env: Env, args: List<LispObject>) -> LispObjectResult {
     }
 }
 
-fn raise_error(_env: Env, args: List<LispObject>) -> LispObjectResult {
+fn raise_error(env: Env, args: List<LispObject>) -> EvalResult {
     let mut args = args.iter();
     let arg_form = args
         .next()
-        .ok_or_else(|| SyntaxError::new("no arg in error"))?;
-    let arg = object::to_string(arg_form)?;
-    Err(Box::new(GenericError::new(arg.clone())))
+        .ok_or_else(|| env.st_err(SyntaxError::new("no arg in error")))?;
+    let arg = env.attach_st(object::to_string(arg_form))?;
+    Err(env.st_err(GenericError::new(arg.clone())))
 }
 
-fn symbol_function(env: Env, args: List<LispObject>) -> LispObjectResult {
+fn symbol_function(env: Env, args: List<LispObject>) -> EvalResult {
     let mut args = args.iter();
     let arg = args
         .next()
-        .ok_or_else(|| SyntaxError::new("no arg in symbol-function"))?;
-    let arg = object::to_symbol(arg)?;
+        .ok_or_else(|| env.st_err(SyntaxError::new("no arg in symbol-function")))?;
+    let arg = env.attach_st(object::to_symbol(arg))?;
     let f = env
         .lookup_symbol_function(&arg)
-        .ok_or_else(|| UndefinedSymbol::new(arg.name(), true))?;
+        .ok_or_else(|| env.st_err(UndefinedSymbol::new(arg.name(), true)))?;
     Ok(LispObject::Fn(f))
 }
 

@@ -7,6 +7,7 @@ use crate::native;
 use crate::object::*;
 use crate::reader::Reader;
 use crate::special;
+use crate::eval::EvalResult;
 
 pub struct Context {
     env: Env,
@@ -39,7 +40,7 @@ impl Context {
         self.env.clone_with_global()
     }
 
-    pub fn eval(&self, s: impl Into<String>) -> LispObjectResult {
+    pub fn eval(&self, s: impl Into<String>) -> EvalResult {
         let env = self.env();
         let s = s.into();
         let mut bytes = s.as_bytes();
@@ -51,7 +52,7 @@ impl Context {
                     res = common::macroexpand_and_eval(env.clone(), &form);
                 }
                 ref err @ Err(_) if common::is_gen_eof(err) => break,
-                Err(e) => return Err(e),
+                Err(e) => panic!("reader error in Context::eval: {}", e),
             }
         }
         res
@@ -61,7 +62,7 @@ impl Context {
         self.eval(s).unwrap()
     }
 
-    pub fn err_eval(&self, s: impl Into<String>) -> error::GenError {
+    pub fn err_eval(&self, s: impl Into<String>) -> error::ErrorWithStackTrace {
         self.eval(s).unwrap_err()
     }
 }
@@ -81,6 +82,6 @@ macro_rules! assert_ok {
 
 macro_rules! assert_err {
     ($ctx:ident, $actual:expr, $downcast_to:ty) => {
-        assert!(error::downcast_error::<$downcast_to>(&$ctx.err_eval($actual)).is_some());
+        assert!($ctx.err_eval($actual).err.downcast_ref::<$downcast_to>().is_some());
     };
 }

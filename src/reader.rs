@@ -3,10 +3,11 @@ use crate::error::SyntaxError;
 use crate::lexer::Lexer;
 use crate::lexer::Token;
 use crate::object::LispObject;
-use crate::object::LispObjectResult;
 use crate::object::Symbol;
-
 use std::io::Read;
+use std::error::Error;
+
+type ReadResult = Result<LispObject, Box<Error>>;
 
 pub struct Reader<'a, T: Read + 'a> {
     lexer: Lexer<'a, T>,
@@ -30,7 +31,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         }
     }
 
-    fn read_list_form(&mut self) -> LispObjectResult {
+    fn read_list_form(&mut self) -> ReadResult {
         let mut vec = Vec::new();
 
         let mut tok = self.lexer.next_token()?;
@@ -55,7 +56,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         Ok(LispObject::List(List::from_rev_iter(vec)))
     }
 
-    pub fn read_form(&mut self) -> LispObjectResult {
+    pub fn read_form(&mut self) -> ReadResult {
         let tok = self.lexer.next_token()?;
 
         let trivial_form = self.tok_to_trivial_form(&tok);

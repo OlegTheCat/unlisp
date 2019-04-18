@@ -1,8 +1,10 @@
-use crate::error::{GenResult, SyntaxError};
+use crate::error::SyntaxError;
+use crate::pushback_reader::PushbackReader;
 use std::io;
 use std::io::Read;
+use std::error::Error;
 
-use crate::pushback_reader::PushbackReader;
+type GenResult<T> = Result<T, Box<Error>>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
