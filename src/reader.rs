@@ -1,13 +1,12 @@
+use crate::common::is_gen_eof;
 use crate::cons::List;
 use crate::error::SyntaxError;
 use crate::lexer::Lexer;
 use crate::lexer::Token;
 use crate::object::LispObject;
 use crate::object::Symbol;
-use std::io::Read;
 use std::error::Error;
-
-type ReadResult = Result<LispObject, Box<Error>>;
+use std::io::Read;
 
 pub struct Reader<'a, T: Read + 'a> {
     lexer: Lexer<'a, T>,
@@ -31,7 +30,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         }
     }
 
-    fn read_list_form(&mut self) -> ReadResult {
+    fn read_list_form(&mut self) -> Result<LispObject, Box<Error>> {
         let mut vec = Vec::new();
 
         let mut tok = self.lexer.next_token()?;
@@ -56,8 +55,14 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         Ok(LispObject::List(List::from_rev_iter(vec)))
     }
 
-    pub fn read_form(&mut self) -> ReadResult {
-        let tok = self.lexer.next_token()?;
+    pub fn read_form(&mut self) -> Result<Option<LispObject>, Box<Error>> {
+        let tok = self.lexer.next_token();
+
+        if is_gen_eof(&tok) {
+            return Ok(None);
+        }
+
+        let tok = tok?;
 
         let trivial_form = self.tok_to_trivial_form(&tok);
         let form = match trivial_form {
@@ -69,7 +74,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
             },
         };
 
-        Ok(form)
+        Ok(Some(form))
     }
 }
 
@@ -80,14 +85,37 @@ mod tests {
     use crate::cons::List;
 
     #[test]
+    fn test_empty() {
+        let mut input = "".as_bytes();
+        let mut reader = Reader::create(&mut input);
+
+        assert_eq!(reader.read_form().unwrap(), None);
+
+        let mut input = "foo".as_bytes();
+        let mut reader = Reader::create(&mut input);
+
+        let _ = reader.read_form().unwrap().unwrap();
+        assert_eq!(reader.read_form().unwrap(), None);
+    }
+
+    #[test]
     fn test_integer_literal() {
         let mut input = "1 12 1000 2019".as_bytes();
         let mut reader = Reader::create(&mut input);
 
-        assert_eq!(reader.read_form().unwrap(), LispObject::Integer(1));
-        assert_eq!(reader.read_form().unwrap(), LispObject::Integer(12));
-        assert_eq!(reader.read_form().unwrap(), LispObject::Integer(1000));
-        assert_eq!(reader.read_form().unwrap(), LispObject::Integer(2019));
+        assert_eq!(reader.read_form().unwrap().unwrap(), LispObject::Integer(1));
+        assert_eq!(
+            reader.read_form().unwrap().unwrap(),
+            LispObject::Integer(12)
+        );
+        assert_eq!(
+            reader.read_form().unwrap().unwrap(),
+            LispObject::Integer(1000)
+        );
+        assert_eq!(
+            reader.read_form().unwrap().unwrap(),
+            LispObject::Integer(2019)
+        );
     }
 
     #[test]
@@ -96,15 +124,15 @@ mod tests {
         let mut reader = Reader::create(&mut input);
 
         assert_eq!(
-            reader.read_form().unwrap(),
+            reader.read_form().unwrap().unwrap(),
             LispObject::String("".to_string())
         );
         assert_eq!(
-            reader.read_form().unwrap(),
+            reader.read_form().unwrap().unwrap(),
             LispObject::String("foo".to_string())
         );
         assert_eq!(
-            reader.read_form().unwrap(),
+            reader.read_form().unwrap().unwrap(),
             LispObject::String("bar".to_string())
         );
     }
@@ -115,15 +143,15 @@ mod tests {
         let mut reader = Reader::create(&mut input);
 
         assert_eq!(
-            reader.read_form().unwrap(),
+            reader.read_form().unwrap().unwrap(),
             LispObject::Symbol(Symbol::new("x"))
         );
         assert_eq!(
-            reader.read_form().unwrap(),
+            reader.read_form().unwrap().unwrap(),
             LispObject::Symbol(Symbol::new("foo"))
         );
         assert_eq!(
-            reader.read_form().unwrap(),
+            reader.read_form().unwrap().unwrap(),
             LispObject::Symbol(Symbol::new("bar*"))
         );
     }
@@ -135,14 +163,14 @@ mod tests {
 
         let sym = |x| LispObject::Symbol(Symbol::new(x));
 
-        assert_eq!(reader.read_form().unwrap(), LispObject::nil());
+        assert_eq!(reader.read_form().unwrap().unwrap(), LispObject::nil());
         assert_eq!(
-            reader.read_form().unwrap(),
+            reader.read_form().unwrap().unwrap(),
             LispObject::List(List::from_rev_iter(vec![sym("foo"), sym("bar")]))
         );
 
         assert_eq!(
-            reader.read_form().unwrap(),
+            reader.read_form().unwrap().unwrap(),
             LispObject::List(List::from_rev_iter(vec![
                 sym("foo"),
                 LispObject::List(List::from_rev_iter(vec![sym("bar"), sym("baz")])),
@@ -156,8 +184,8 @@ mod tests {
         let mut input = "nil t".as_bytes();
         let mut reader = Reader::create(&mut input);
 
-        assert_eq!(reader.read_form().unwrap(), LispObject::nil());
-        assert_eq!(reader.read_form().unwrap(), LispObject::T);
+        assert_eq!(reader.read_form().unwrap().unwrap(), LispObject::nil());
+        assert_eq!(reader.read_form().unwrap().unwrap(), LispObject::T);
     }
 
     #[test]

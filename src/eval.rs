@@ -44,9 +44,7 @@ pub fn call_function_object(
     }
 
     match function.body {
-        object::FunctionBody::Native(ref native_body) => {
-            native_body.0(env, args)
-        }
+        object::FunctionBody::Native(ref native_body) => native_body.0(env, args),
         object::FunctionBody::Interpreted(ref interpreted_body) => {
             let mut args = args.iter();
 

@@ -167,7 +167,8 @@ fn set_fn(mut env: Env, args: List<LispObject>) -> EvalResult {
     let sym = args
         .next()
         .ok_or_else(|| env.st_err(SyntaxError::new("no symbol in set-fn")))?;
-    let sym = object::to_symbol(sym).map_err(|_| env.st_err(SyntaxError::new("not a symbol in set-fn")))?;
+    let sym = object::to_symbol(sym)
+        .map_err(|_| env.st_err(SyntaxError::new("not a symbol in set-fn")))?;
 
     let func = args
         .next()
@@ -183,8 +184,8 @@ fn set_macro_fn(mut env: Env, args: List<LispObject>) -> EvalResult {
     let sym = args
         .next()
         .ok_or_else(|| env.st_err(SyntaxError::new("no symbol in set-macro-fn")))?;
-    let sym =
-        object::to_symbol(sym).map_err(|_| env.st_err(SyntaxError::new("not a symbol in set-macro-fn")))?;
+    let sym = object::to_symbol(sym)
+        .map_err(|_| env.st_err(SyntaxError::new("not a symbol in set-macro-fn")))?;
 
     let func = args
         .next()

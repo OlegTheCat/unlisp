@@ -7,7 +7,10 @@ use crate::object::LispObject;
 use crate::object::Symbol;
 use crate::special;
 
-fn macroexpand_list(env: &Env, list: &List<LispObject>) -> Result<List<LispObject>, error::ErrorWithStackTrace> {
+fn macroexpand_list(
+    env: &Env,
+    list: &List<LispObject>,
+) -> Result<List<LispObject>, error::ErrorWithStackTrace> {
     let expanded = list
         .iter()
         .map(|lo| macroexpand_all(env.clone(), lo))
@@ -63,7 +66,8 @@ pub fn macroexpand_all(env: Env, form: &LispObject) -> EvalResult {
                 }
                 LispObject::Symbol(s) if *s == Symbol::new("let") => {
                     let let_forms = list.tail();
-                    let special::ParsedLet { bindings, body } = env.attach_st_box(special::parse_let(&let_forms))?;
+                    let special::ParsedLet { bindings, body } =
+                        env.attach_st_box(special::parse_let(&let_forms))?;
                     let expanded_body = macroexpand_list(&env, &body)?;
 
                     let mut expanded_bindings = List::empty();

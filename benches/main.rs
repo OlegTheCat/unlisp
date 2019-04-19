@@ -13,7 +13,7 @@ fn read(s: impl Into<String>) -> LispObject {
     let s = s.into();
     let mut bytes = s.as_bytes();
     let mut reader = Reader::create(&mut bytes);
-    reader.read_form().unwrap()
+    reader.read_form().unwrap().unwrap()
 }
 
 fn env() -> Env {

@@ -1,12 +1,12 @@
 use crate::cons::List;
-use crate::object::*;
 use crate::error::ErrorWithStackTrace;
+use crate::object::*;
 use im::HashMap;
 use std::cell::RefCell;
+use std::error::Error;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::rc::Rc;
-use std::error::Error;
 
 #[derive(Debug, Clone)]
 pub enum StackFrameDesignator {
@@ -145,7 +145,10 @@ impl Env {
         res.map_err(|e| self.st_box_err(e))
     }
 
-    pub fn attach_st<T, E: Error + 'static>(&self, res: Result<T, E>) -> Result<T, ErrorWithStackTrace> {
+    pub fn attach_st<T, E: Error + 'static>(
+        &self,
+        res: Result<T, E>,
+    ) -> Result<T, ErrorWithStackTrace> {
         res.map_err(|e| self.st_err(e))
     }
 

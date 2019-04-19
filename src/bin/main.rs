@@ -26,7 +26,7 @@ fn repl() {
     prompt();
     loop {
         match reader.read_form() {
-            Ok(form) => match macroexpand_and_eval(env.clone(), &form) {
+            Ok(Some(form)) => match macroexpand_and_eval(env.clone(), &form) {
                 Ok(lo) => {
                     println!("{}", lo);
                 }
@@ -35,7 +35,7 @@ fn repl() {
                     print_stack_trace(&e.stack_trace);
                 }
             },
-            ref err @ Err(_) if is_gen_eof(err) => break,
+            Ok(None) => break,
             Err(ref e) => println!("reader error: {}", e),
         }
         prompt();

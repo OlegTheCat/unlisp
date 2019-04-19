@@ -1,8 +1,8 @@
 use crate::error::SyntaxError;
 use crate::pushback_reader::PushbackReader;
+use std::error::Error;
 use std::io;
 use std::io::Read;
-use std::error::Error;
 
 type GenResult<T> = Result<T, Box<Error>>;
 

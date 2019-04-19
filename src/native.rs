@@ -6,9 +6,9 @@ use crate::eval::EvalResult;
 use crate::object;
 use crate::object::LispObject;
 use crate::object::Symbol;
-use std::io::Write;
 use std::error::Error;
 use std::fmt;
+use std::io::Write;
 
 #[derive(Debug)]
 struct DummyError;

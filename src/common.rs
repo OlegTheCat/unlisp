@@ -7,9 +7,9 @@ use crate::print;
 use crate::reader;
 use crate::special;
 
+use std::error::Error;
 use std::fs;
 use std::io;
-use std::error::Error;
 
 pub fn macroexpand_and_eval(env: env::Env, form: &object::LispObject) -> eval::EvalResult {
     let expanded = macroexpand::macroexpand_all(env.clone(), form)?;
@@ -22,7 +22,7 @@ pub fn eval_stdlib(env: &env::Env) {
     let mut reader = reader::Reader::create(&mut file);
     loop {
         match reader.read_form() {
-            Ok(form) => {
+            Ok(Some(form)) => {
                 let res = macroexpand_and_eval(env.clone(), &form);
                 res.map_err(|e| {
                     println!("error during stdlib eval: {}", e.err);
@@ -30,7 +30,7 @@ pub fn eval_stdlib(env: &env::Env) {
                 })
                 .unwrap();
             }
-            ref err @ Err(_) if is_gen_eof(err) => break,
+            Ok(None) => break,
 
             Err(ref e) => panic!("Reader error during stdlib eval: {}", e),
         }
