@@ -9,6 +9,9 @@ use crate::object::*;
 use crate::reader::Reader;
 use crate::special;
 
+use std::io;
+use std::error::Error;
+
 pub struct Context {
     env: Env,
 }
@@ -72,6 +75,16 @@ pub fn read(s: impl Into<String>) -> LispObject {
     let mut bytes = s.as_bytes();
     let mut reader = Reader::create(&mut bytes);
     reader.read_form().unwrap().unwrap()
+}
+
+pub fn is_gen_eof<T>(result: &Result<T, Box<Error>>) -> bool {
+    match result {
+        Err(e) => match e.downcast_ref::<io::Error>() {
+            Some(io_err) => io_err.kind() == io::ErrorKind::UnexpectedEof,
+            None => false,
+        },
+        _ => false,
+    }
 }
 
 macro_rules! assert_ok {

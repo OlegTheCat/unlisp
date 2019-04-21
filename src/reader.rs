@@ -1,4 +1,3 @@
-use crate::common::is_gen_eof;
 use crate::cons::List;
 use crate::error::SyntaxError;
 use crate::lexer::Lexer;
@@ -7,6 +6,7 @@ use crate::object::LispObject;
 use crate::object::Symbol;
 use std::error::Error;
 use std::io::Read;
+use std::io;
 
 pub struct Reader<'a, T: Read + 'a> {
     lexer: Lexer<'a, T>,
@@ -17,6 +17,11 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
         Reader {
             lexer: Lexer::create(r),
         }
+    }
+
+    fn next_tok_or_eof(&mut self) -> Result<Token, Box<Error>> {
+        let tok = self.lexer.next_token()?;
+        tok.ok_or(Box::new(io::Error::from(io::ErrorKind::UnexpectedEof)))
     }
 
     fn tok_to_trivial_form(&self, tok: &Token) -> Option<LispObject> {
@@ -33,7 +38,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
     fn read_list_form(&mut self) -> Result<LispObject, Box<Error>> {
         let mut vec = Vec::new();
 
-        let mut tok = self.lexer.next_token()?;
+        let mut tok = self.next_tok_or_eof()?;
 
         while tok != Token::RightPar {
             let form;
@@ -49,20 +54,20 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
             }
 
             vec.push(form);
-            tok = self.lexer.next_token()?;
+            tok = self.next_tok_or_eof()?;
         }
 
         Ok(LispObject::List(List::from_rev_iter(vec)))
     }
 
     pub fn read_form(&mut self) -> Result<Option<LispObject>, Box<Error>> {
-        let tok = self.lexer.next_token();
+        let tok = self.lexer.next_token()?;
 
-        if is_gen_eof(&tok) {
+        if tok.is_none() {
             return Ok(None);
         }
 
-        let tok = tok?;
+        let tok = tok.unwrap();
 
         let trivial_form = self.tok_to_trivial_form(&tok);
         let form = match trivial_form {
@@ -81,7 +86,7 @@ impl<'a, T: Read + 'a> Reader<'a, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::is_gen_eof;
+    use crate::test_utils::is_gen_eof;
     use crate::cons::List;
 
     #[test]

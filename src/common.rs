@@ -7,9 +7,7 @@ use crate::print;
 use crate::reader;
 use crate::special;
 
-use std::error::Error;
 use std::fs;
-use std::io;
 
 pub fn macroexpand_and_eval(env: env::Env, form: &object::LispObject) -> eval::EvalResult {
     let expanded = macroexpand::macroexpand_all(env.clone(), form)?;
@@ -41,14 +39,4 @@ pub fn init_env(env: &mut env::Env) {
     special::prepare_specials(env);
     native::prepare_natives(env);
     eval_stdlib(env);
-}
-
-pub fn is_gen_eof<T>(result: &Result<T, Box<Error>>) -> bool {
-    match result {
-        Err(e) => match e.downcast_ref::<io::Error>() {
-            Some(io_err) => io_err.kind() == io::ErrorKind::UnexpectedEof,
-            None => false,
-        },
-        _ => false,
-    }
 }

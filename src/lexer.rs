@@ -120,8 +120,14 @@ impl<'a, T: Read> Lexer<'a, T> {
         Ok(())
     }
 
-    pub fn next_token(&mut self) -> GenResult<Token> {
-        let c = self.next_char()?;
+    pub fn next_token(&mut self) -> GenResult<Option<Token>> {
+        let c = self.next_char();
+
+        if is_eof(&c) {
+            return Ok(None);
+        }
+
+        let c = c?;
 
         if c.is_whitespace() {
             return self.next_token();
@@ -149,24 +155,38 @@ impl<'a, T: Read> Lexer<'a, T> {
             _ => Err(SyntaxError::new(format!("unexpexted char {}", c)))?,
         };
 
-        Ok(tok)
+        Ok(Some(tok))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::is_gen_eof;
+    use crate::test_utils::is_gen_eof;
+
+    #[test]
+    fn test_empty() {
+        let mut input = "".as_bytes();
+        let mut lexer = Lexer::create(&mut input);
+
+        assert_eq!(lexer.next_token().unwrap(), None);
+
+        let mut input = "foo".as_bytes();
+        let mut lexer = Lexer::create(&mut input);
+        let _ = lexer.next_token().unwrap().unwrap();
+
+        assert_eq!(lexer.next_token().unwrap(), None);
+    }
 
     #[test]
     fn test_integer_literal() {
         let mut input = "1 12 1000 2019".as_bytes();
         let mut lexer = Lexer::create(&mut input);
 
-        assert_eq!(lexer.next_token().unwrap(), Token::IntegerLiteral(1));
-        assert_eq!(lexer.next_token().unwrap(), Token::IntegerLiteral(12));
-        assert_eq!(lexer.next_token().unwrap(), Token::IntegerLiteral(1000));
-        assert_eq!(lexer.next_token().unwrap(), Token::IntegerLiteral(2019));
+        assert_eq!(lexer.next_token().unwrap().unwrap(), Token::IntegerLiteral(1));
+        assert_eq!(lexer.next_token().unwrap().unwrap(), Token::IntegerLiteral(12));
+        assert_eq!(lexer.next_token().unwrap().unwrap(), Token::IntegerLiteral(1000));
+        assert_eq!(lexer.next_token().unwrap().unwrap(), Token::IntegerLiteral(2019));
     }
 
     #[test]
@@ -175,15 +195,15 @@ mod tests {
         let mut lexer = Lexer::create(&mut input);
 
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().unwrap(),
             Token::StringLiteral("".to_string())
         );
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().unwrap(),
             Token::StringLiteral("foo".to_string())
         );
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().unwrap(),
             Token::StringLiteral("bar".to_string())
         );
     }
@@ -201,13 +221,13 @@ mod tests {
         let mut input = "x foo bar*".as_bytes();
         let mut lexer = Lexer::create(&mut input);
 
-        assert_eq!(lexer.next_token().unwrap(), Token::Symbol("x".to_string()));
+        assert_eq!(lexer.next_token().unwrap().unwrap(), Token::Symbol("x".to_string()));
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().unwrap(),
             Token::Symbol("foo".to_string())
         );
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().unwrap(),
             Token::Symbol("bar*".to_string())
         );
     }
@@ -217,9 +237,9 @@ mod tests {
         let mut input = "( ) (".as_bytes();
         let mut lexer = Lexer::create(&mut input);
 
-        assert_eq!(lexer.next_token().unwrap(), Token::LeftPar);
-        assert_eq!(lexer.next_token().unwrap(), Token::RightPar);
-        assert_eq!(lexer.next_token().unwrap(), Token::LeftPar);
+        assert_eq!(lexer.next_token().unwrap().unwrap(), Token::LeftPar);
+        assert_eq!(lexer.next_token().unwrap().unwrap(), Token::RightPar);
+        assert_eq!(lexer.next_token().unwrap().unwrap(), Token::LeftPar);
     }
 
     #[test]
@@ -228,7 +248,7 @@ mod tests {
         let mut lexer = Lexer::create(&mut input);
 
         assert_eq!(
-            lexer.next_token().unwrap(),
+            lexer.next_token().unwrap().unwrap(),
             Token::Symbol("foo".to_string())
         );
     }
