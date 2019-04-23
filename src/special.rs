@@ -215,27 +215,6 @@ fn if_form(env: Env, args: List<LispObject>) -> EvalResult {
     }
 }
 
-fn raise_error(env: Env, args: List<LispObject>) -> EvalResult {
-    let mut args = args.iter();
-    let arg_form = args
-        .next()
-        .ok_or_else(|| env.st_err(SyntaxError::new("no arg in error")))?;
-    let arg = env.attach_st(object::to_string(arg_form))?;
-    Err(env.st_err(GenericError::new(arg.clone())))
-}
-
-fn symbol_function(env: Env, args: List<LispObject>) -> EvalResult {
-    let mut args = args.iter();
-    let arg = args
-        .next()
-        .ok_or_else(|| env.st_err(SyntaxError::new("no arg in symbol-function")))?;
-    let arg = env.attach_st(object::to_symbol(arg))?;
-    let f = env
-        .lookup_symbol_function(&arg)
-        .ok_or_else(|| env.st_err(UndefinedSymbol::new(arg.name(), true)))?;
-    Ok(LispObject::Fn(f))
-}
-
 pub fn prepare_specials(env: &mut Env) {
     let mut set = |s: &str, f| {
         env.set_global_special(Symbol::new(s), object::NativeFnWrapper(f));
@@ -247,8 +226,6 @@ pub fn prepare_specials(env: &mut Env) {
     set("set-fn", set_fn);
     set("set-macro-fn", set_macro_fn);
     set("lambda", lambda_form);
-    set("error", raise_error);
-    set("symbol-function", symbol_function);
 }
 
 #[cfg(test)]
@@ -357,44 +334,6 @@ mod tests {
                                    (quote (let ((x 2)) x)))))
                  (x nil)",
             "2"
-        );
-    }
-
-    #[test]
-    fn test_symbol_function() {
-        let ctx = ctx();
-        assert_err!(ctx, "(symbol-function)", error::SyntaxError);
-        assert_err!(ctx, "(symbol-function 1)", error::CastError);
-
-        assert!(object::to_function(
-            &ctx.ok_eval("(set-fn foo (lambda (x) x)) (symbol-function foo)")
-        )
-        .is_ok());
-        assert_ok!(
-            ctx,
-            "(set-fn foo (lambda (x) x)) (set-fn bar (symbol-function foo)) (bar 1)",
-            "1"
-        );
-    }
-
-    #[test]
-    fn test_error() {
-        let ctx = ctx();
-        assert_err!(ctx, "(error)", error::SyntaxError);
-        assert_err!(ctx, "(error 1)", error::CastError);
-
-        assert_err!(ctx, "(error \"foo\")", error::GenericError);
-    }
-
-    #[test]
-    fn test_higher_order_funcs() {
-        let ctx = ctx();
-        assert_ok!(
-            ctx,
-            "(set-fn ho (lambda (f) (set-fn f f) (f 5)))
-             (set-fn foo (lambda (x) x))
-             (ho (symbol-function foo))",
-            "5"
         );
     }
 }

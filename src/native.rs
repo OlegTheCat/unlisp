@@ -37,6 +37,7 @@ macro_rules! define_native_fn {
 
             $( let $arg = $env.attach_st($converter(args.next().unwrap()))?; )*
 
+            #[allow(unused)]
             let res = $result_wrap($body);
             Ok(res)
         }
@@ -262,6 +263,27 @@ define_native_fn! {
     }
 }
 
+define_native_fn! {
+    make_symbol_function,
+    native_symbol_function(env, arg: object::to_symbol) -> identity {
+        let f = env
+            .lookup_symbol_function(&arg)
+            .ok_or_else(|| env.st_err(error::UndefinedSymbol::new(arg.name(), true)))?;
+        LispObject::Fn(f)
+    }
+}
+
+define_native_fn! {
+    make_raise_error,
+    native_raise_error(env, arg: object::to_string) -> identity {
+        let mut err = env.st_err(error::GenericError::new(arg.clone()));
+
+        // drop one frame, so error function is not present in stact trace
+        err.stack_trace = err.stack_trace.tail();
+        return Err(err);
+    }
+}
+
 pub fn prepare_natives(env: &mut env::Env) {
     let mut save = |name: &str, maker: fn(String) -> object::Function| {
         env.set_global_function(Symbol::new(name), maker(name.to_string()));
@@ -288,10 +310,14 @@ pub fn prepare_natives(env: &mut env::Env) {
     save("stdout-write", make_stdout_write);
 
     save("macroexpand-1", make_macroexpand);
+
+    save("error", make_raise_error);
+    save("symbol-function", make_symbol_function);
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::object;
     use crate::error;
     use crate::test_utils::*;
 
@@ -359,25 +385,25 @@ mod tests {
         assert_err!(ctx, "(apply)", error::ArityError);
         assert_err!(
             ctx,
-            "(set-fn x (lambda ())) (apply (symbol-function x))",
+            "(set-fn x (lambda ())) (apply (symbol-function (quote x)))",
             error::ArityError
         );
         assert_err!(
             ctx,
-            "(set-fn x (lambda ())) (apply (symbol-function x) (quote (1 2)))",
+            "(set-fn x (lambda ())) (apply (symbol-function (quote x)) (quote (1 2)))",
             error::ArityError
         );
 
-        assert_ok!(ctx, "(apply (symbol-function +) (quote (1 2)))", "3");
-        assert_ok!(ctx, "(apply (symbol-function +) (quote (1 2 5)))", "8");
+        assert_ok!(ctx, "(apply (symbol-function (quote +)) (quote (1 2)))", "3");
+        assert_ok!(ctx, "(apply (symbol-function (quote +)) (quote (1 2 5)))", "8");
         assert_ok!(
             ctx,
-            "(apply (symbol-function cons) 1 (quote ((2))))",
+            "(apply (symbol-function (quote cons)) 1 (quote ((2))))",
             "(1 2)"
         );
         assert_ok!(
             ctx,
-            "(apply (symbol-function apply) (symbol-function +) 1 (quote ((2))))",
+            "(apply (symbol-function (quote apply)) (symbol-function (quote +)) 1 (quote ((2))))",
             "3"
         );
     }
@@ -478,4 +504,44 @@ mod tests {
         assert_ok!(ctx, "(set-macro-fn x (lambda (arg) (if arg (quote x) (quote y)))) (macroexpand-1 (quote (x nil)))", "y");
         assert_ok!(ctx, "(macroexpand-1 (quote (cons 1 nil)))", "(cons 1 nil)");
     }
+
+    #[test]
+    fn test_error() {
+        let ctx = ctx();
+        assert_err!(ctx, "(error)", error::ArityError);
+        assert_err!(ctx, "(error 1)", error::CastError);
+
+        assert_err!(ctx, "(error \"foo\")", error::GenericError);
+    }
+
+    #[test]
+    fn test_symbol_function() {
+        let ctx = ctx();
+        assert_err!(ctx, "(symbol-function)", error::ArityError);
+        assert_err!(ctx, "(symbol-function 1)", error::CastError);
+
+        assert!(object::to_function(
+            &ctx.ok_eval("(set-fn foo (lambda (x) x)) (symbol-function (quote foo))")
+        )
+                .is_ok());
+        assert_ok!(
+            ctx,
+            "(set-fn foo (lambda (x) x)) (set-fn bar (symbol-function (quote foo))) (bar 1)",
+            "1"
+        );
+    }
+
+
+    #[test]
+    fn test_higher_order_funcs() {
+        let ctx = ctx();
+        assert_ok!(
+            ctx,
+            "(set-fn ho (lambda (f) (set-fn f f) (f 5)))
+             (set-fn foo (lambda (x) x))
+             (ho (symbol-function (quote foo)))",
+            "5"
+        );
+    }
+
 }

@@ -6,8 +6,8 @@
 (set-fn
  list*
  (lambda list* (& args)
-   (apply (symbol-function apply)
-          (symbol-function list) args)))
+   (apply (symbol-function (quote apply))
+          (symbol-function (quote list)) args)))
 
 (set-fn
  funcall
@@ -229,12 +229,12 @@
   (let ((lists (cons xs ys)))
     (if (every? (lambda (x) (not (emptyp x)))
                 lists)
-        (let ((heads (mapcar-single (symbol-function first)
+        (let ((heads (mapcar-single (symf (quote first))
                                     lists))
-              (tails (mapcar-single (symbol-function rest)
+              (tails (mapcar-single (symf (quote rest))
                                     lists)))
           (cons (apply f heads)
-                (apply (symf mapcar) f tails)))
+                (apply (symf (quote mapcar)) f tails)))
         ())))
 
 (defmacro dbgp (str-prefix & forms)
