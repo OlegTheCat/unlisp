@@ -47,12 +47,20 @@ nil
 
 ;; this call raises an error because
 ;; functions are "stored" in a different namespace
->>> (funcall foo 1 2)
+;; and need to be accessed in a special way
+>>> (let ((func foo)) (func 1 2))
 error: undefined symbol foo
 stack trace:
   <top>
 
->>> (funcall (symbol-function (quote foo)) 1 2)
+;; this call raises an error because
+;; function objects need to be called using funcall
+>>> (let ((func (symbol-function (quote foo)))) (func 1 2))
+error: undefined function func
+stack trace:
+  <top>
+
+>>> (let ((func (symbol-function (quote foo)))) (funcall func 1 2))
 3
 ```
 
@@ -61,6 +69,15 @@ stack trace:
 ```
 >>> (funcall (lambda (f x) (funcall f (funcall f (funcall f x)))) (symbol-function (quote list)) nil)
 (((nil)))
+```
+
+### Varargs
+
+```
+>>> (defun list (& args) args)
+nil
+>>> (list 1 2 3)
+(1 2 3)
 ```
 
 ### Apply
